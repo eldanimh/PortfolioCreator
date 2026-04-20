@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Portfolio Creator{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'index' %}" class="nav-brand">
+                <span class="brand-icon">◆</span> Portfolio Creator
+            </a>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <span class="nav-user">{{ user.username }}</span>
+                    <a href="{% url 'configurar_tokens' %}" class="nav-link">⚙ Tokens</a>
+                    <a href="{% url 'logout' %}" class="nav-link nav-link-logout">Cerrar sesión</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="nav-link">Iniciar sesión</a>
+                    <a href="{% url 'registro' %}" class="nav-link nav-link-accent">Registrarse</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Portfolio Creator — Trabajo Final LTAW — URJC 2026</p>
+        </div>
+    </footer>
+</body>
+</html>

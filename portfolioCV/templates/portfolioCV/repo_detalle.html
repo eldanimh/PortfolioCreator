@@ -1,0 +1,95 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}{{ repo.name|default:"Repositorio" }} — {{ platform }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    {% if platform == "GitLab URJC" %}
+        <a href="{% url 'gitlab_repos' %}" class="back-link">← Volver a repositorios</a>
+    {% else %}
+        <a href="{% url 'github_repos' %}" class="back-link">← Volver a repositorios</a>
+    {% endif %}
+    <h1 class="page-title">
+        {% if platform == "GitLab URJC" %}🦊{% else %}🐙{% endif %}
+        {{ repo.name|default:"Repositorio" }}
+    </h1>
+</div>
+
+{% if error_msg %}
+<div class="alert alert-error">{{ error_msg }}</div>
+{% endif %}
+
+{% if repo %}
+<div class="detail-container">
+    <div class="detail-card">
+        <h2 class="detail-section-title">Información del proyecto</h2>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Nombre</span>
+                <span class="detail-value">{{ repo.name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Descripción</span>
+                <span class="detail-value">{{ repo.description|default:"Sin descripción" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">URL</span>
+                <span class="detail-value">
+                    {% if repo.web_url %}
+                        <a href="{{ repo.web_url }}" target="_blank">{{ repo.web_url }}</a>
+                    {% elif repo.html_url %}
+                        <a href="{{ repo.html_url }}" target="_blank">{{ repo.html_url }}</a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            {% if repo.created_at %}
+            <div class="detail-item">
+                <span class="detail-label">Creado</span>
+                <span class="detail-value">{{ repo.created_at }}</span>
+            </div>
+            {% endif %}
+            {% if repo.default_branch %}
+            <div class="detail-item">
+                <span class="detail-label">Rama principal</span>
+                <span class="detail-value">{{ repo.default_branch }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if languages %}
+    <div class="detail-card">
+        <h2 class="detail-section-title">Tecnologías utilizadas</h2>
+        <div class="languages-container">
+            {% for lang, value in languages.items %}
+            <div class="lang-item">
+                <div class="lang-header">
+                    <span class="lang-name">{{ lang }}</span>
+                    <span class="lang-pct">{{ value }}{% if value > 100 %} bytes{% else %}%{% endif %}</span>
+                </div>
+                <div class="lang-bar-bg">
+                    <div class="lang-bar-fill" style="width: {% if value > 100 %}50{% else %}{{ value }}{% endif %}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="detail-actions">
+        {% if platform == "GitLab URJC" %}
+            <a href="{% url 'generar_cv_gitlab' repo_id %}" class="btn btn-primary btn-large">
+                📄 Descargar CV en PDF
+            </a>
+        {% else %}
+            <a href="{% url 'generar_cv_github' owner repo_name %}" class="btn btn-primary btn-large">
+                📄 Descargar CV en PDF
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

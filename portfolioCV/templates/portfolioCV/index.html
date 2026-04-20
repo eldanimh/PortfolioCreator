@@ -1,0 +1,70 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}Portfolio Creator — Inicio{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <h1 class="hero-title">Portfolio Creator</h1>
+    <p class="hero-subtitle">Elige entre GitLab de la URJC o GitHub:</p>
+</div>
+
+<div class="platforms-grid">
+    <a href="{% url 'gitlab_repos' %}" class="platform-card platform-gitlab">
+        <div class="platform-icon">🦊</div>
+        <h2 class="platform-name">GitLab URJC</h2>
+        <p class="platform-desc">Accede a tus repositorios en gitlab.eif.urjc.es</p>
+        <span class="platform-arrow">→</span>
+    </a>
+
+    <a href="{% url 'github_repos' %}" class="platform-card platform-github">
+        <div class="platform-icon">🐙</div>
+        <h2 class="platform-name">GitHub</h2>
+        <p class="platform-desc">Accede a tus repositorios en github.com</p>
+        <span class="platform-arrow">→</span>
+    </a>
+</div>
+
+{% if user.is_authenticated %}
+<section class="section-recursos">
+    <h2 class="section-title">Recursos guardados</h2>
+
+    {% if contenidos %}
+    <ul class="recursos-list">
+        {% for c in contenidos %}
+        <li class="recurso-item">
+            <a href="{% url 'detalle_recurso' c.recurso %}">{{ c.recurso }}</a>
+            <span class="recurso-fecha">{{ c.fecha_creacion|date:"d/m/Y H:i" }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty-state">No hay recursos guardados todavía.</p>
+    {% endif %}
+
+    <div class="form-section">
+        <h3 class="form-title">Crear nuevo recurso</h3>
+        <form method="post" class="resource-form">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="form-error">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Crear recurso</button>
+        </form>
+    </div>
+</section>
+{% else %}
+<div class="cta-section">
+    <p class="cta-text">Inicia sesión para ver tus repositorios y generar tu CV.</p>
+    <div class="cta-buttons">
+        <a href="{% url 'login' %}" class="btn btn-primary">Iniciar sesión</a>
+        <a href="{% url 'registro' %}" class="btn btn-secondary">Registrarse</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

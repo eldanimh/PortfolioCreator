@@ -1,0 +1,39 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}Configurar Tokens — Portfolio Creator{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card auth-card-wide">
+        <h1 class="auth-title">⚙ Configurar Tokens de API</h1>
+        <p class="auth-subtitle">Introduce tus tokens de acceso personal para conectar con GitLab URJC y GitHub.</p>
+
+        <div class="token-help">
+            <div class="help-card">
+                <h3>🦊 GitLab URJC</h3>
+                <p>Ve a <strong>gitlab.eif.urjc.es</strong> → Avatar → Edit profile → Access Tokens</p>
+                <p>Scope necesario: <code>read_api</code></p>
+            </div>
+            <div class="help-card">
+                <h3>🐙 GitHub</h3>
+                <p>Ve a <strong>github.com/settings/tokens</strong> → Generate new token (classic)</p>
+                <p>Scope necesario: <code>repo</code> o <code>public_repo</code></p>
+            </div>
+        </div>
+
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="form-error">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary btn-full">Guardar tokens</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}{{ platform }} — Repositorios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{% url 'index' %}" class="back-link">← Volver al inicio</a>
+    <h1 class="page-title">
+        {% if platform == "GitLab URJC" %}🦊{% else %}🐙{% endif %}
+        Repositorios en {{ platform }}
+    </h1>
+</div>
+
+{% if error_msg %}
+<div class="alert alert-error">
+    {{ error_msg }}
+</div>
+{% endif %}
+
+{% if repos %}
+<div class="repos-grid">
+    {% for repo in repos %}
+    <div class="repo-card">
+        <div class="repo-header">
+            <h3 class="repo-name">
+                {% if platform == "GitLab URJC" %}
+                    {{ repo.name }}
+                {% else %}
+                    {{ repo.name }}
+                {% endif %}
+            </h3>
+            {% if repo.visibility %}
+            <span class="repo-badge badge-{{ repo.visibility }}">{{ repo.visibility }}</span>
+            {% elif repo.private != None %}
+            <span class="repo-badge {% if repo.private %}badge-private{% else %}badge-public{% endif %}">
+                {% if repo.private %}private{% else %}public{% endif %}
+            </span>
+            {% endif %}
+        </div>
+
+        <p class="repo-desc">
+            {{ repo.description|default:"Sin descripción" }}
+        </p>
+
+        {% if repo.language %}
+        <span class="repo-lang">● {{ repo.language }}</span>
+        {% endif %}
+
+        <div class="repo-meta">
+            {% if repo.star_count != None %}
+                <span>★ {{ repo.star_count }}</span>
+            {% elif repo.stargazers_count != None %}
+                <span>★ {{ repo.stargazers_count }}</span>
+            {% endif %}
+        </div>
+
+        <div class="repo-actions">
+            {% if platform == "GitLab URJC" %}
+                <a href="{% url 'gitlab_repo_detalle' repo.id %}" class="btn btn-small btn-primary">Ver detalle</a>
+            {% else %}
+                <a href="{% url 'github_repo_detalle' repo.owner.login repo.name %}" class="btn btn-small btn-primary">Ver detalle</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif not error_msg %}
+<div class="empty-state-container">
+    <p class="empty-state">No se encontraron repositorios.</p>
+</div>
+{% endif %}
+{% endblock %}

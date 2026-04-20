@@ -1,0 +1,11 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}Error 404 — Portfolio Creator{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <h1 class="error-code">Error 404</h1>
+    <p class="error-message">El recurso '<strong>{{ recurso }}</strong>' no fue encontrado</p>
+    <a href="{% url 'index' %}" class="btn btn-primary">Volver al inicio</a>
+</div>
+{% endblock %}

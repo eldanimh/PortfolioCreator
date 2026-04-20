@@ -1,0 +1,29 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}{{ contenido.recurso|title }} — Portfolio Creator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{% url 'index' %}" class="back-link">← Volver al inicio</a>
+    <h1 class="page-title">{{ contenido.recurso|title }}</h1>
+</div>
+
+<div class="detail-container">
+    <div class="detail-card">
+        <p class="contenido-text">{{ contenido.contenido }}</p>
+
+        {% if contenido.fecha_creacion %}
+        <p class="contenido-meta">Creado: {{ contenido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+        <div class="detail-actions">
+            <a href="{% url 'eliminar_recurso' contenido.recurso %}" class="btn btn-danger"
+               onclick="return confirm('¿Estás seguro de eliminar este recurso?')">
+                🗑 Eliminar recurso
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

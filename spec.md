@@ -1,0 +1,110 @@
+# Trabajo Final LTAW
+
+## Requisitos funcionales / Descripción
+
+* Aplicación web en Django que yo le doy mi perfil de GitHub y GitLab y me genere un CV para el proyecto bases de datos de bibliografias de articulos publicados, trabajar en el tema de la autenticacion con la de GitHub con Auth, que me cree el repositorio con el CV subido en GitHub Pages y que la base de datos este con sqlite3.
+* La página principal me enseñará dos apartados entre Gitlab y Github y al entrar en cada uno me enseñará los repositorios que tengo en cada uno.
+* Al acceder a un repositorio, me creará un CV del portfolio en PDF, y me lo descargará.
+  
+
+## Requisitos NO funcionales
+* Usa los templates de DJANGO los comandos de creacion web con DJANGO que DJANGO haga el trabajo sucio de HTML
+* Usa Django como framework web
+* Usa el entorno virtual venv-django, en el directorio padre, para ejecutar Python (y los comandos de Django)
+* Nombre del proyecto Django: `PortfolioGenerator`.
+* Crea el proyecto en este mismo directorio, usando `django-admin startproject PortfolioGenerator .`
+* Nombre de la app Django: `portfolioCV`
+* Usa modelos (models.py) para acceder a la base de datos
+* No uses JavaScript.
+* Usa el conversor `<str:recurso>` en las URLs de Django para capturar el nombre del recurso.
+* Añade CSS para que se vea profesional y elegante.
+* USA la api de Gitlab de la urjc codigo:
+```
+# portfolioCV/views.py
+import requests
+
+GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"
+
+def gitlab_repos(request):
+    token = request.user.profile.gitlab_token  # o como lo guardes
+    headers = {"PRIVATE-TOKEN": token}
+    
+    # Listar repos del usuario
+    response = requests.get(
+        f"{GITLAB_URJC_URL}/projects",
+        headers=headers,
+        params={"owned": True, "per_page": 50}
+    )
+    repos = response.json()
+    
+    return render(request, "portfolioCV/gitlab_repos.html", {"repos": repos})
+```
+* la api de Github normal:
+```
+# portfolioCV/views.py
+import requests
+
+GITHUB_API_URL = "https://api.github.com"
+
+def github_repos(request):
+    token = request.user.profile.github_token  # o como lo guardes
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    # Listar repos del usuario
+    response = requests.get(
+        f"{GITHUB_API_URL}/user/repos",
+        headers=headers,
+        params={"per_page": 50, "sort": "updated"}
+    )
+    repos = response.json()
+    
+    return render(request, "portfolioCV/github_repos.html", {"repos": repos})
+```
+* usuario y contraseñas serán dadas por GitHub con Auth 
+* cuando le des a descargar CV que no solo descargue lo mismo que aparece sino que entre en el proyecto te ponga bien el README.md dentro del pdf y que tambien ponga el nombre de los archivos que hay en el proyecto ordenados por carpetas todo esto dentro del pdf
+* PDF: que el pdf sea bonito y facil de leer usa algo parecido al css para el pdf qque el README.md se vea bien como si lo estuviera viedno en gitlab o github. la ordenacion de archivos tambien debe verse bien
+
+## Estado
+
+* Tabla `Contenido-Data`:
+  * `id` (int, primary key, auto increment)
+  * `recurso` (str, unique)
+  * `contenido` (str)
+  * `usuario` (str)
+  * `contraseña` (str)
+
+
+## Inicialización 
+* Migra para ver nueva informacion 
+* carga datos iniciales si los hubiera
+* y haz comprovaciones 
+
+## Recursos
+
+* `/` : Página principal
+  * GET: Devuelve una página HTML con:
+    * Título `<h1>`: "Portfolio Creator"
+    * Párrafo `<p>`: "Elige entre Github de la URJC o Github:"
+    * Lista `<ul>` con todos los recursos de la base de datos, donde cada elemento es un enlace `<a>` a `/<nombre_recurso>/`
+    * Formulario para crear un nuevo recurso con su contenido. El formulario debe tener un campo para el nombre del recurso y otro para el contenido.
+  * POST: Crea un nuevo recurso con el nombre y el contenido proporcionados en el formulario. Para ello, lo almacenará en la tabla Contenido de la base de datos.
+* `/<str:recurso>/` : Página de un recurso
+  * GET: 
+    * Si el recurso existe en la tabla `Contenido`, devuelve una página HTML con:
+      * Título `<h1>`: el nombre del recurso (capitalizado)
+      * Párrafo `<p>`: el contenido asociado en la base de datos, extraido de la tabla `Contenido`
+      * Enlace para volver a `/`
+    * Si el recurso no existe en la tabla `Contenido`, devuelve un error HTTP 404 con:
+      * Título `<h1>`: "Error 404"
+      * Párrafo `<p>`: "El recurso '`<nombre_recurso>`' no fue encontrado"
+      * Enlace para volver a `/`
+  * GET; Eliminar:
+    * Añade un botón para eliminar dicho recurso cuando estés dentro de él
+
+## Entrega
+* Crea tambiénn un fichero entrega.md para indicar, brevemente:
+  * Hasta qué fase has realizado.
+  * Qué parte de lo especificado has realizado en cada fase.
