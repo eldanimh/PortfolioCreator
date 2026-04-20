@@ -335,7 +335,7 @@ def generar_cv_github(request, owner, repo_name):
             "Authorization": f"Bearer {profile.github_token}",
             "Accept": "application/vnd.github.v3.raw"
         }
-        resp_readme = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/readme", headers_readme, timeout=10)
+        resp_readme = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/readme", headers=headers_readme, timeout=10)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
