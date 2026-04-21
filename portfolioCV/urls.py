@@ -23,6 +23,17 @@ urlpatterns = [
     path('github/<str:owner>/<str:repo_name>/', views.github_repo_detalle, name='github_repo_detalle'),
     path('github/<str:owner>/<str:repo_name>/cv/', views.generar_cv_github, name='generar_cv_github'),
 
+    # OpenAlex API
+    path('openalex/', views.openalex_repos, name='openalex_repos'),
+    path('openalex/<str:work_id>/', views.openalex_repo_detalle, name='openalex_repo_detalle'),
+    path('openalex/<str:work_id>/cv/', views.generar_cv_openalex, name='generar_cv_openalex'),
+
+    # CV Profesional Builder
+    path('mi-cv/', views.cv_builder, name='cv_builder'),
+    path('mi-cv/add/', views.agregar_al_cv, name='agregar_al_cv'),
+    path('mi-cv/remove/', views.eliminar_del_cv, name='eliminar_del_cv'),
+    path('mi-cv/descargar/', views.descargar_cv_completo, name='descargar_cv_completo'),
+
     # Recursos genéricos (debe ir al final para no interferir con las rutas anteriores)
     path('<str:recurso>/eliminar/', views.eliminar_recurso, name='eliminar_recurso'),
     path('<str:recurso>/', views.detalle_recurso, name='detalle_recurso'),

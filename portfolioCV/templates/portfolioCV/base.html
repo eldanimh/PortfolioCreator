@@ -15,7 +15,7 @@
             </a>
             <div class="nav-links">
                 {% if user.is_authenticated %}
-                    <span class="nav-user">{{ user.username }}</span>
+                    <a href="{% url 'cv_builder' %}" class="nav-link">📄 Mi CV</a>
                     <a href="{% url 'configurar_tokens' %}" class="nav-link">⚙ Tokens</a>
                     <a href="{% url 'logout' %}" class="nav-link nav-link-logout">Cerrar sesión</a>
                 {% else %}

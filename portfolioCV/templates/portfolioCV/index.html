@@ -22,6 +22,13 @@
         <p class="platform-desc">Accede a tus repositorios en github.com</p>
         <span class="platform-arrow">→</span>
     </a>
+
+    <a href="{% url 'openalex_repos' %}" class="platform-card platform-openalex" style="border-left-color: #f39c12;">
+        <div class="platform-icon">📚</div>
+        <h2 class="platform-name">OpenAlex</h2>
+        <p class="platform-desc">Busca publicaciones e información científica de OpenAlex</p>
+        <span class="platform-arrow">→</span>
+    </a>
 </div>
 
 {% if user.is_authenticated %}

@@ -66,6 +66,30 @@ def github_repos(request):
 * usuario y contraseñas serán dadas por GitHub con Auth 
 * cuando le des a descargar CV que no solo descargue lo mismo que aparece sino que entre en el proyecto te ponga bien el README.md dentro del pdf y que tambien ponga el nombre de los archivos que hay en el proyecto ordenados por carpetas todo esto dentro del pdf
 * PDF: que el pdf sea bonito y facil de leer usa algo parecido al css para el pdf qque el README.md se vea bien como si lo estuviera viedno en gitlab o github. la ordenacion de archivos tambien debe verse bien
+* Sigue la misma funcionalidad para OpenAlex, que te pida el token de acceso y que te muestre los repositorios que tienes en OpenAlex o los que quieras buscar en su base de datos para descargar los trabajos, continúa con la misma funcionalidad que en GitHub y GitLab y estética
+* NUEVA FUNCIONALIDAD CV:
+  * Vamos a añadir un botón con un + que sea agregar
+  * lo que hará ese botón de agregar es agregar los repos que quieras de gitlab o github o openalex a un cv que se irá creando en la misma página, para tener un CV profesional
+  * este cv se irá guardando en la tabla Contenido-Data en el campo "contenido" y se podrá descargar en cualquier momento con un botón de descargar
+  * el cv se irá actualizando cada vez que le des a agregar, se borrará el anterior y se creará uno nuevo con los repositorios que hayas agregado
+  * será un CV profesional que cuando tengas en la lista todos los portfolios o documentos o github o gitlab o openalex que quieras agregar le des a un botón de generar cv y te descargue el cv con todo lo que has agregado
+  * el cv debe estar bien ordenado y ser bonito y facil de leer
+  * puedes añadir foto linkedin y numero de telefono tambien un about me
+
+## Integración con OpenAlex API (Bibliografías)
+
+Para obtener información detallada sobre las publicaciones científicas asociadas a los proyectos, la aplicación deberá integrarse con la API REST de OpenAlex:
+* **Endpoint Principal**: `https://api.openalex.org`
+* **Autenticación**: Mediante el parámetro `?api_key=TU_CLAVE` en la URL (su uso es gratuito).
+* **Entidades principales a consultar**: Se van a mapear las siguientes entidades extraídas de la API:
+  * `/works` (obras, artículos, datasets)
+  * `/authors` (autores y perfiles identificativos)
+  * `/sources` (revistas y repositorios de las publicaciones)
+  * `/institutions` (universidades o centros adscritos)
+  * `/topics` y `/keywords` (temáticas y palabras clave)
+* **Operaciones de filtrado**: Se utilizará el método `GET` realizando llamadas dinámicas implementando los parámetros `?filter=` (para fechas concretas), `?search=` (para buscar textos exactos) o `?per_page=` (para paginación).
+* **Gestión de la Respuesta**: Todo el sistema deberá procesar las respuestas que siempre vendrán como formato JSON, mapeando el bloque de datos que proviene dentro de la clave `"results"`.
+* **Identificadores Normalizados**: Se puede (y recomienda) habilitar la búsqueda rápida mediante sistemas de identificación universales usando las rutas de la API, tales como un DOI (`/works/doi:...`) o un ORCID para investigadores (`/authors/https://orcid.org/...`).
 
 ## Estado
 
@@ -75,6 +99,20 @@ def github_repos(request):
   * `contenido` (str)
   * `usuario` (str)
   * `contraseña` (str)
+  * `token_GitLab` (str)
+  * `token_GitHub` (str)
+  * `plataforma` (str)
+  * `nombre_repo` (str)
+  * `url_repo` (str)
+  * `Obras` (str)
+  * `Autor` (str)
+  * `Fuentes` (str)
+  * `instituciones` (str)
+  * `topics` (str)
+  * `keywords` (str)
+  
+ 
+
 
 
 ## Inicialización 

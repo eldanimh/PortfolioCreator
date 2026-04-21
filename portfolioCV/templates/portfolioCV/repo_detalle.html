@@ -6,6 +6,8 @@
 <div class="page-header">
     {% if platform == "GitLab URJC" %}
         <a href="{% url 'gitlab_repos' %}" class="back-link">← Volver a repositorios</a>
+    {% elif platform == "OpenAlex" %}
+        <a href="{% url 'openalex_repos' %}" class="back-link">← Volver a la búsqueda</a>
     {% else %}
         <a href="{% url 'github_repos' %}" class="back-link">← Volver a repositorios</a>
     {% endif %}
@@ -79,15 +81,40 @@
     </div>
     {% endif %}
 
-    <div class="detail-actions">
+    <div class="detail-actions" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
         {% if platform == "GitLab URJC" %}
             <a href="{% url 'generar_cv_gitlab' repo_id %}" class="btn btn-primary btn-large">
                 📄 Descargar CV en PDF
             </a>
+            <form method="post" action="{% url 'agregar_al_cv' %}">
+                {% csrf_token %}
+                <input type="hidden" name="platform" value="GitLab URJC">
+                <input type="hidden" name="id" value="{{ repo_id }}">
+                <input type="hidden" name="name" value="{{ repo.name }}">
+                <button type="submit" class="btn btn-large" style="background: #2ea043; border-color: #2ea043; color: white;">+ Añadir a Mi CV Profesional</button>
+            </form>
+        {% elif platform == "OpenAlex" %}
+            <a href="{% url 'generar_cv_openalex' work_id %}" class="btn btn-primary btn-large">
+                📄 Descargar CV/Resumen en PDF
+            </a>
+            <form method="post" action="{% url 'agregar_al_cv' %}">
+                {% csrf_token %}
+                <input type="hidden" name="platform" value="OpenAlex">
+                <input type="hidden" name="id" value="{{ work_id }}">
+                <input type="hidden" name="name" value="{{ repo.name }}">
+                <button type="submit" class="btn btn-large" style="background: #2ea043; border-color: #2ea043; color: white;">+ Añadir a Mi CV Profesional</button>
+            </form>
         {% else %}
             <a href="{% url 'generar_cv_github' owner repo_name %}" class="btn btn-primary btn-large">
                 📄 Descargar CV en PDF
             </a>
+            <form method="post" action="{% url 'agregar_al_cv' %}">
+                {% csrf_token %}
+                <input type="hidden" name="platform" value="GitHub">
+                <input type="hidden" name="id" value="{{ owner }}/{{ repo_name }}">
+                <input type="hidden" name="name" value="{{ repo.name }}">
+                <button type="submit" class="btn btn-large" style="background: #2ea043; border-color: #2ea043; color: white;">+ Añadir a Mi CV Profesional</button>
+            </form>
         {% endif %}
     </div>
 </div>

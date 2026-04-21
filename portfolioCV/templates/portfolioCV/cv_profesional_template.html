@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Curriculum Vitae Profesional</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --primary: #0969da;
+            --text-main: #24292f;
+            --text-muted: #57606a;
+            --border: #d0d7de;
+            --bg: #ffffff;
+            --bg-muted: #f6f8fa;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            font-size: 11pt;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Header Section */
+        header {
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .header-info h1 {
+            margin: 0 0 5px 0;
+            font-size: 24pt;
+            font-weight: 700;
+        }
+
+        .contact-info {
+            display: flex;
+            gap: 15px;
+            color: var(--text-muted);
+            font-size: 10pt;
+            flex-wrap: wrap;
+        }
+
+        .contact-info a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Secciones Generales */
+        section {
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            font-size: 16pt;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            color: var(--text-main);
+        }
+
+        /* About Me */
+        .about-me {
+            background: var(--bg-muted);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 10.5pt;
+        }
+        
+        .about-me p {
+            margin-top: 0;
+        }
+        .about-me p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Proyectos / Experiencia */
+        .project-card {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 5px;
+        }
+
+        .project-title {
+            font-size: 13pt;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .project-url {
+            font-size: 9pt;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .project-meta {
+            font-size: 9pt;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            font-size: 8pt;
+            font-weight: 500;
+            border-radius: 12px;
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            margin-right: 5px;
+        }
+
+        .project-desc {
+            font-size: 10pt;
+            color: var(--text-main);
+            margin: 5px 0 0 0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <header>
+            {% if cv.personal_info.photo %}
+            <img src="{{ cv.personal_info.photo }}" alt="Foto de perfil" class="header-photo">
+            {% endif %}
+            
+            <div class="header-info">
+                <h1>{{ user.username|title }}</h1>
+                <div class="contact-info">
+                    {% if cv.personal_info.phone %}
+                    <span>📞 {{ cv.personal_info.phone }}</span>
+                    {% endif %}
+                    {% if cv.personal_info.linkedin %}
+                    <span>🔗 <a href="{{ cv.personal_info.linkedin }}" target="_blank">{{ cv.personal_info.linkedin }}</a></span>
+                    {% endif %}
+                    <span>👤 Plataforma Portfolio Creator</span>
+                </div>
+            </div>
+        </header>
+
+        {% if cv.personal_info.about_html %}
+        <section>
+            <h2>Sobre Mí</h2>
+            <div class="about-me">
+                {{ cv.personal_info.about_html|safe }}
+            </div>
+        </section>
+        {% endif %}
+
+        <section>
+            <h2>Proyectos y Publicaciones Destacadas</h2>
+            
+            {% if not cv.items %}
+                <p>No se han registrado proyectos en este CV.</p>
+            {% else %}
+                {% for item in cv.items %}
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3 class="project-title">{{ item.name }}</h3>
+                        {% if item.url %}
+                        <a href="{{ item.url }}" class="project-url">{{ item.url }}</a>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="project-meta">
+                        <span class="badge" style="background: {% if item.platform == 'GitHub' %}#24292f; color: white;{% elif item.platform == 'OpenAlex' %}#f39c12; color: white;{% else %}#fc6d26; color: white;{% endif %} border: none;">
+                            {{ item.platform }}
+                        </span>
+                        {% if item.language %}
+                        <span class="badge">💻 {{ item.language }}</span>
+                        {% endif %}
+                        <span style="margin-left: 10px;">ID: {{ item.id }}</span>
+                    </div>
+                    
+                    {% if item.description %}
+                    <p class="project-desc">{{ item.description }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+        </section>
+
+    </div>
+</body>
+</html>

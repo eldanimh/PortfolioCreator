@@ -1,0 +1,68 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}Búsqueda OpenAlex — Portfolio Creator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{% url 'index' %}" class="back-link">← Volver al inicio</a>
+    <h1 class="page-title">📚 Buscar en OpenAlex</h1>
+</div>
+
+<div style="margin-bottom: 2rem; background: var(--card-bg, #fff); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #eaecef);">
+    <form method="get" action="{% url 'openalex_repos' %}" style="display: flex; gap: 10px;">
+        <input type="text" name="search" value="{{ query }}" placeholder="Buscar por tema, palabra clave, etc..." style="flex-grow: 1; padding: 10px; border-radius: 6px; border: 1px solid #d0d7de;">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </form>
+</div>
+
+{% if error_msg %}
+<div class="alert alert-error">
+    {{ error_msg }}
+</div>
+{% endif %}
+
+{% if repos %}
+<div class="repos-grid">
+    {% for repo in repos %}
+    <div class="repo-card" style="border-left: 3px solid #f39c12;">
+        <div class="repo-header">
+            <h3 class="repo-name">{{ repo.name }}</h3>
+            <span class="repo-badge badge-public">{{ repo.visibility }}</span>
+        </div>
+
+        <p class="repo-desc">
+            <strong>Autores:</strong> {{ repo.description|default:"Sin autores conocidos" }}
+        </p>
+
+        {% if repo.language %}
+        <span class="repo-lang">🌍 {{ repo.language }}</span>
+        {% endif %}
+
+        <div class="repo-meta">
+            <span>📅 {{ repo.created_at|default:"Desconocido" }}</span>
+            <span style="font-size: 0.8rem; margin-left: 10px; color: #8c959f;">(ID: {{ repo.id }})</span>
+        </div>
+
+        <div class="repo-actions" style="display: flex; gap: 5px; align-items: center;">
+            <a href="{% url 'openalex_repo_detalle' repo.id %}" class="btn btn-small btn-primary">Ver detalle del trabajo</a>
+            <form method="post" action="{% url 'agregar_al_cv' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="platform" value="OpenAlex">
+                <input type="hidden" name="id" value="{{ repo.id }}">
+                <input type="hidden" name="name" value="{{ repo.name }}">
+                <button type="submit" class="btn btn-small" style="background: #2ea043; border-color: #2ea043; color: white;" title="Añadir a Mi CV Profesional">+ Añadir al CV</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif not error_msg and query %}
+<div class="empty-state-container">
+    <p class="empty-state">No se encontraron trabajos para esa búsqueda.</p>
+</div>
+{% elif not query %}
+<div class="empty-state-container">
+    <p class="empty-state">Introduce una búsqueda arriba para encontrar bibliografías en openalex.</p>
+</div>
+{% endif %}
+{% endblock %}

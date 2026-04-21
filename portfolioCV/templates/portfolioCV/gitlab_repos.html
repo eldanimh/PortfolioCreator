@@ -54,11 +54,25 @@
             {% endif %}
         </div>
 
-        <div class="repo-actions">
+        <div class="repo-actions" style="display: flex; gap: 5px; align-items: center;">
             {% if platform == "GitLab URJC" %}
-                <a href="{% url 'gitlab_repo_detalle' repo.id %}" class="btn btn-small btn-primary">Ver detalle</a>
+                <a href="{% url 'gitlab_repo_detalle' repo.id %}" class="btn btn-small btn-primary">Ver detalle y crear PDF</a>
+                <form method="post" action="{% url 'agregar_al_cv' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="platform" value="GitLab URJC">
+                    <input type="hidden" name="id" value="{{ repo.id }}">
+                    <input type="hidden" name="name" value="{{ repo.name }}">
+                    <button type="submit" class="btn btn-small" style="background: #2ea043; border-color: #2ea043; color: white;" title="Añadir a Mi CV Profesional">+ Añadir al CV</button>
+                </form>
             {% else %}
-                <a href="{% url 'github_repo_detalle' repo.owner.login repo.name %}" class="btn btn-small btn-primary">Ver detalle</a>
+                <a href="{% url 'github_repo_detalle' repo.owner.login repo.name %}" class="btn btn-small btn-primary">Ver detalle y crear PDF</a>
+                <form method="post" action="{% url 'agregar_al_cv' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="platform" value="GitHub">
+                    <input type="hidden" name="id" value="{{ repo.owner.login }}/{{ repo.name }}">
+                    <input type="hidden" name="name" value="{{ repo.name }}">
+                    <button type="submit" class="btn btn-small" style="background: #2ea043; border-color: #2ea043; color: white;" title="Añadir a Mi CV Profesional">+ Añadir al CV</button>
+                </form>
             {% endif %}
         </div>
     </div>

@@ -17,16 +17,18 @@ class TokensForm(forms.ModelForm):
     """Formulario para configurar los tokens de GitHub y GitLab"""
     class Meta:
         model = UserProfile
-        fields = ['github_token', 'gitlab_token', 'github_username', 'gitlab_username']
+        fields = ['github_token', 'gitlab_token', 'openalex_token', 'github_username', 'gitlab_username']
         widgets = {
             'github_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitHub'}),
             'gitlab_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitLab URJC'}),
+            'openalex_token': forms.PasswordInput(attrs={'placeholder': 'API Key de OpenAlex (Opcional)'}),
             'github_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitHub'}),
             'gitlab_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitLab URJC'}),
         }
         labels = {
             'github_token': 'GitHub Personal Access Token',
             'gitlab_token': 'GitLab URJC Personal Access Token',
+            'openalex_token': 'OpenAlex API Key',
             'github_username': 'Nombre de usuario en GitHub',
             'gitlab_username': 'Nombre de usuario en GitLab URJC',
         }

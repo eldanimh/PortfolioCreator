@@ -1,4 +1,5 @@
 import io
+import json
 import requests
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, Http404
@@ -192,6 +193,95 @@ def github_repos(request):
     })
 
 
+# ─── OpenAlex - Bibliografías ──────────────────────────────
+@login_required
+def openalex_repos(request):
+    """Busca bibliografías e información utilizando OpenAlex API"""
+    profile = get_object_or_404(UserProfile, user=request.user)
+    query = request.GET.get('search', '').strip()
+    
+    repos = []
+    error_msg = None
+
+    if query:
+        url = "https://api.openalex.org/works"
+        params = {"search": query, "per_page": 30}
+        if profile.openalex_token:
+            params["api_key"] = profile.openalex_token
+            
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                for work in results:
+                    authors = ", ".join([a.get('author', {}).get('display_name', '') for a in work.get('authorships', [])])
+                    repos.append({
+                        'id': work.get('id', '').split('/')[-1],
+                        'name': work.get('title', 'Sin título')[:100],
+                        'description': authors,
+                        'language': work.get('language', 'unknown'),
+                        'visibility': work.get('type', 'work').capitalize(),
+                        'created_at': work.get('publication_year'),
+                    })
+            else:
+                error_msg = f"Error al conectar con OpenAlex (código {response.status_code})."
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Error al buscar en OpenAlex: {str(e)}"
+    
+    return render(request, 'portfolioCV/openalex_repos.html', {
+        'repos': repos,
+        'error_msg': error_msg,
+        'platform': 'OpenAlex',
+        'query': query
+    })
+
+@login_required
+def openalex_repo_detalle(request, work_id):
+    """Muestra detalle de una obra científica y permite generar CV"""
+    profile = get_object_or_404(UserProfile, user=request.user)
+    repo = None
+    languages = {}
+    error_msg = None
+    
+    url = f"https://api.openalex.org/works/{work_id}"
+    params = {}
+    if profile.openalex_token:
+        params["api_key"] = profile.openalex_token
+        
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code == 200:
+            work = resp.json()
+            repo = {
+                'name': work.get('title', 'Sin título'),
+                'description': f"Publicado en {work.get('publication_year', 'Desconocido')}",
+                'web_url': work.get('id'),
+                'created_at': work.get('publication_date'),
+                'default_branch': work.get('type', 'N/A')
+            }
+            topics = work.get('topics', [])
+            total_score = sum([t.get('score', 0) for t in topics])
+            if total_score > 0:
+                for t in topics:
+                    languages[t.get('display_name')] = int((t.get('score', 0) / total_score) * 100)
+            else:
+                languages = {work.get('language', 'N/A'): 100}
+        else:
+            error_msg = f"Obra no encontrada (Error {resp.status_code})"
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+
+    return render(request, 'portfolioCV/repo_detalle.html', {
+        'repo': repo,
+        'languages': languages,
+        'error_msg': error_msg,
+        'platform': 'OpenAlex',
+        'work_id': work_id,
+    })
+
+
+
 # ─── Detalle de repo GitLab ────────────────────────────────
 @login_required
 def gitlab_repo_detalle(request, repo_id):
@@ -348,6 +438,64 @@ def generar_cv_github(request, owner, repo_name):
 
 
 
+@login_required
+def generar_cv_openalex(request, work_id):
+    """Genera un PDF con formato de artículo a partir de OpenAlex usando la estructura de _generar_pdf"""
+    profile = get_object_or_404(UserProfile, user=request.user)
+    
+    url = f"https://api.openalex.org/works/{work_id}"
+    params = {}
+    if profile.openalex_token:
+        params["api_key"] = profile.openalex_token
+        
+    repo = {}
+    languages = {}
+    tree = []
+    readme = ""
+    
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        work = resp.json() if resp.status_code == 200 else {}
+        
+        if work:
+            repo = {
+                'name': work.get('title', 'Sin título'),
+                'web_url': work.get('id'),
+                'last_activity_at': work.get('publication_date', 'N/A')
+            }
+            
+            abs_idx = work.get('abstract_inverted_index')
+            if abs_idx:
+                words = {}
+                for word, pos_list in abs_idx.items():
+                    for pos in pos_list:
+                        words[pos] = word
+                abstract = " ".join([words[p] for p in sorted(words.keys())])
+                readme = f"## Resumen (Abstract)\n\n{abstract}\n\n"
+            else:
+                readme = "## Resumen\n\nNo hay resumen disponible para este artículo.\n\n"
+                
+            readme += "## Autores e Instituciones\n\n"
+            for auth in work.get('authorships', []):
+                aname = auth.get('author', {}).get('display_name', 'Unknown')
+                inst = [i.get('display_name') for i in auth.get('institutions', [])]
+                if inst:
+                    readme += f"- **{aname}** ({', '.join(inst)})\n"
+                else:
+                    readme += f"- **{aname}**\n"
+                    
+            tree = [a.get('author', {}).get('display_name', 'Unknown') + ".author" for a in work.get('authorships', [])]
+            
+            topics = work.get('topics', [])
+            total_score = sum([t.get('score', 0) for t in topics])
+            if total_score > 0:
+                for t in topics:
+                    languages[t.get('display_name')] = int((t.get('score', 0) / total_score) * 100)
+    except requests.exceptions.RequestException:
+        pass
+
+    return _generar_pdf(request.user, repo, languages, tree, readme, 'OpenAlex')
+
 def _generar_pdf(user, repo, languages, tree, readme, platform):
     """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub."""
     from django.template.loader import render_to_string
@@ -419,4 +567,176 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     filename = f"CV_{repo_name}_{platform}.pdf".replace(" ", "_")
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+# ─── CV Profesional Unificado ──────────────────────────────
+def _get_cv_data(user):
+    recurso_name = f"cv_profesional_{user.username}"
+    contenido_obj, created = ContenidoData.objects.get_or_create(
+        recurso=recurso_name,
+        defaults={'usuario': user.username, 'contenido': '{}'}
+    )
+    try:
+        data = json.loads(contenido_obj.contenido)
+    except json.JSONDecodeError:
+        data = {}
+        
+    if not isinstance(data, dict):
+        data = {}
+    
+    if 'personal_info' not in data:
+        data['personal_info'] = {'photo': '', 'linkedin': '', 'phone': '', 'about': ''}
+    if 'items' not in data:
+        data['items'] = []
+        
+    return contenido_obj, data
+
+@login_required
+def cv_builder(request):
+    """Renderiza el panel de control del CV unificado"""
+    contenido_obj, data = _get_cv_data(request.user)
+    
+    if request.method == 'POST':
+        data['personal_info']['photo'] = request.POST.get('photo', '').strip()
+        data['personal_info']['linkedin'] = request.POST.get('linkedin', '').strip()
+        data['personal_info']['phone'] = request.POST.get('phone', '').strip()
+        data['personal_info']['about'] = request.POST.get('about', '').strip()
+        
+        contenido_obj.contenido = json.dumps(data)
+        contenido_obj.save()
+        messages.success(request, 'Información del CV guardada correctamente.')
+        return redirect('cv_builder')
+
+    return render(request, 'portfolioCV/cv_builder.html', {
+        'cv_data': data
+    })
+
+@login_required
+def agregar_al_cv(request):
+    """Agrega un repositorio u obra a la cesta del CV (espera un POST)"""
+    if request.method == 'POST':
+        platform = request.POST.get('platform')
+        item_id = request.POST.get('id')
+        name = request.POST.get('name')
+        
+        if platform and item_id and name:
+            contenido_obj, data = _get_cv_data(request.user)
+            # Evitar duplicados
+            if not any(str(item['id']) == str(item_id) and item['platform'] == platform for item in data['items']):
+                data['items'].append({
+                    'platform': platform,
+                    'id': item_id,
+                    'name': name
+                })
+                contenido_obj.contenido = json.dumps(data)
+                contenido_obj.save()
+                messages.success(request, f'"{name}" añadido a tu CV Profesional.')
+            else:
+                messages.info(request, f'"{name}" ya estaba en tu CV Profesional.')
+                
+        return redirect(request.META.get('HTTP_REFERER', 'cv_builder'))
+    return redirect('index')
+
+@login_required
+def eliminar_del_cv(request):
+    """Elimina un ítem específico del CV"""
+    if request.method == 'POST':
+        item_uuid = request.POST.get('index')
+        try:
+            index = int(item_uuid)
+            contenido_obj, data = _get_cv_data(request.user)
+            if 0 <= index < len(data['items']):
+                removed = data['items'].pop(index)
+                contenido_obj.contenido = json.dumps(data)
+                contenido_obj.save()
+                messages.success(request, f'"{removed["name"]}" eliminado de tu CV.')
+        except (ValueError, TypeError):
+            pass
+            
+    return redirect('cv_builder')
+
+@login_required
+def descargar_cv_completo(request):
+    """Compila y descarga el CV profesional con todos los ítems agregados"""
+    _, data = _get_cv_data(request.user)
+    profile = get_object_or_404(UserProfile, user=request.user)
+    
+    enriched_items = []
+    for item in data.get('items', []):
+        try:
+            nuevo_item = item.copy()
+            if item['platform'] == 'GitHub':
+                headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
+                resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    rdata = resp.json()
+                    nuevo_item['description'] = rdata.get('description', '')
+                    nuevo_item['url'] = rdata.get('html_url', '')
+                    nuevo_item['language'] = rdata.get('language', '')
+                    
+            elif item['platform'] == 'GitLab URJC':
+                headers = {"PRIVATE-TOKEN": profile.gitlab_token}
+                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item['id']}", headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    rdata = resp.json()
+                    nuevo_item['description'] = rdata.get('description', '')
+                    nuevo_item['url'] = rdata.get('web_url', '')
+                    
+            elif item['platform'] == 'OpenAlex':
+                params = {}
+                if profile.openalex_token:
+                    params['api_key'] = profile.openalex_token
+                resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5)
+                if resp.status_code == 200:
+                    wdata = resp.json()
+                    authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
+                    nuevo_item['description'] = authors
+                    nuevo_item['url'] = wdata.get('id', '')
+                    nuevo_item['language'] = "Publicación OpenAlex"
+            
+            enriched_items.append(nuevo_item)
+        except Exception:
+            enriched_items.append(item)
+            
+    data['items'] = enriched_items
+            
+    return _generar_pdf_completo(request.user, data)
+
+
+def _generar_pdf_completo(user, cv_data):
+    """Generador subyacente de PDF para el CV Unificado usando Playwright"""
+    from django.template.loader import render_to_string
+    import markdown
+    from playwright.sync_api import sync_playwright
+
+    buffer = io.BytesIO()
+    
+    if cv_data['personal_info'].get('about'):
+        cv_data['personal_info']['about_html'] = markdown.markdown(cv_data['personal_info']['about'])
+    else:
+        cv_data['personal_info']['about_html'] = ""
+    
+    context = {'user': user, 'cv': cv_data}
+    html_string = render_to_string('portfolioCV/cv_profesional_template.html', context)
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_content(html_string, wait_until='networkidle')
+        
+        header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'
+        footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+        
+        pdf_bytes = page.pdf(
+            format="A4", print_background=True,
+            margin={'top': '25mm', 'bottom': '25mm', 'left': '15mm', 'right': '15mm'},
+            display_header_footer=True, header_template=header_html, footer_template=footer_html
+        )
+        browser.close()
+
+    buffer.write(pdf_bytes)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="CV_Profesional_Completo.pdf"'
     return response
