@@ -43,3 +43,11 @@
 - Tarjetas de plataforma con iconos y efectos hover
 - Formularios estilizados
 - Sistema de alertas/mensajes
+
+### Fase 8: Integración con Gemini AI
+- Integración con la API de Gemini (`google-genai`) para resúmenes inteligentes
+- Selector de tipo de CV: Extenso, Una Página, Tecnología, TFG
+- Gestión de la API Key de Gemini desde la interfaz web (página de tokens)
+- Vista de resultado con resumen formateado en Markdown/HTML
+- Estilos CSS dedicados para sección Gemini (tarjetas tipo CV, badge, contenido renderizado)
+

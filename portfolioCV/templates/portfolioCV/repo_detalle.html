@@ -117,6 +117,64 @@
             </form>
         {% endif %}
     </div>
+
+    <div class="detail-card gemini-section">
+        <h2 class="detail-section-title">🤖 Resumen con Inteligencia Artificial</h2>
+        <p style="color: #57606a; margin-bottom: 1rem;">Genera un resumen profesional de este proyecto usando Gemini AI. Elige el tipo de CV:</p>
+        <form method="post" action="{% url 'generar_resumen_gemini' %}">
+            {% csrf_token %}
+            {% if platform == "GitLab URJC" %}
+                <input type="hidden" name="platform" value="GitLab URJC">
+                <input type="hidden" name="id" value="{{ repo_id }}">
+            {% elif platform == "OpenAlex" %}
+                <input type="hidden" name="platform" value="OpenAlex">
+                <input type="hidden" name="id" value="{{ work_id }}">
+            {% else %}
+                <input type="hidden" name="platform" value="GitHub">
+                <input type="hidden" name="id" value="{{ owner }}/{{ repo_name }}">
+            {% endif %}
+            <input type="hidden" name="name" value="{{ repo.name }}">
+
+            <div class="cv-type-selector">
+                <label class="cv-type-option">
+                    <input type="radio" name="cv_type" value="extenso" checked>
+                    <span class="cv-type-card">
+                        <span class="cv-type-icon">📝</span>
+                        <span class="cv-type-label">CV Extenso</span>
+                        <span class="cv-type-desc">Detallado y completo</span>
+                    </span>
+                </label>
+                <label class="cv-type-option">
+                    <input type="radio" name="cv_type" value="una_pagina">
+                    <span class="cv-type-card">
+                        <span class="cv-type-icon">📄</span>
+                        <span class="cv-type-label">Una Página</span>
+                        <span class="cv-type-desc">Conciso y directo</span>
+                    </span>
+                </label>
+                <label class="cv-type-option">
+                    <input type="radio" name="cv_type" value="tecnologia">
+                    <span class="cv-type-card">
+                        <span class="cv-type-icon">💻</span>
+                        <span class="cv-type-label">Tecnología</span>
+                        <span class="cv-type-desc">Stack técnico</span>
+                    </span>
+                </label>
+                <label class="cv-type-option">
+                    <input type="radio" name="cv_type" value="tfg">
+                    <span class="cv-type-card">
+                        <span class="cv-type-icon">🎓</span>
+                        <span class="cv-type-label">TFG</span>
+                        <span class="cv-type-desc">Formato académico</span>
+                    </span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">
+                🤖 Generar Resumen con Gemini AI
+            </button>
+        </form>
+    </div>
 </div>
 {% endif %}
 {% endblock %}

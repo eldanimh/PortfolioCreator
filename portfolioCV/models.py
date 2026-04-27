@@ -10,6 +10,7 @@ class UserProfile(models.Model):
     github_username = models.CharField(max_length=150, blank=True, default='')
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     openalex_token = models.CharField(max_length=255, blank=True, default='')
+    gemini_api_key = models.CharField(max_length=255, blank=True, default='')
 
 
     def __str__(self):

@@ -5,6 +5,8 @@
 * Aplicación web en Django que yo le doy mi perfil de GitHub y GitLab y me genere un CV para el proyecto bases de datos de bibliografias de articulos publicados, trabajar en el tema de la autenticacion con la de GitHub con Auth, que me cree el repositorio con el CV subido en GitHub Pages y que la base de datos este con sqlite3.
 * La página principal me enseñará dos apartados entre Gitlab y Github y al entrar en cada uno me enseñará los repositorios que tengo en cada uno.
 * Al acceder a un repositorio, me creará un CV del portfolio en PDF, y me lo descargará.
+* finalmente implementamos la API de Gemini, para que haga un resumen de cada markdown del proyecto. de cada CV y que te deje elegi entre CV extenso, CV de una pagina , CV de tecnologia, CV del TFG del proyecto que estoy realizando.
+* la clave se gestiona manualmente en la interaz web como se está haciendo
   
 
 ## Requisitos NO funcionales
@@ -90,6 +92,22 @@ Para obtener información detallada sobre las publicaciones científicas asociad
 * **Operaciones de filtrado**: Se utilizará el método `GET` realizando llamadas dinámicas implementando los parámetros `?filter=` (para fechas concretas), `?search=` (para buscar textos exactos) o `?per_page=` (para paginación).
 * **Gestión de la Respuesta**: Todo el sistema deberá procesar las respuestas que siempre vendrán como formato JSON, mapeando el bloque de datos que proviene dentro de la clave `"results"`.
 * **Identificadores Normalizados**: Se puede (y recomienda) habilitar la búsqueda rápida mediante sistemas de identificación universales usando las rutas de la API, tales como un DOI (`/works/doi:...`) o un ORCID para investigadores (`/authors/https://orcid.org/...`).
+
+## API DE GEMINI
+integración en el venv 
+intalar: pip install -q -U google-genai
+
+from google import genai
+
+# The client gets the API key from the environment variable `GEMINI_API_KEY`.
+client = genai.Client()
+
+response = client.models.generate_content(
+    model="gemini-3-flash-preview", contents="input_text"
+)
+print(response.text)
+
+
 
 ## Estado
 

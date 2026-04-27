@@ -704,6 +704,138 @@ def descargar_cv_completo(request):
     return _generar_pdf_completo(request.user, data)
 
 
+@login_required
+def generar_resumen_gemini(request):
+    """Genera un resumen con Gemini AI según el tipo de CV seleccionado"""
+    if request.method != 'POST':
+        return redirect('index')
+
+    profile = get_object_or_404(UserProfile, user=request.user)
+    if not profile.gemini_api_key:
+        messages.warning(request, 'Configura tu API Key de Gemini primero.')
+        return redirect('configurar_tokens')
+
+    platform = request.POST.get('platform', '')
+    item_id = request.POST.get('id', '')
+    cv_type = request.POST.get('cv_type', 'extenso')
+    item_name = request.POST.get('name', 'Proyecto')
+
+    # Recopilar contenido del repo/obra
+    contenido_texto = f"Proyecto: {item_name}\nPlataforma: {platform}\n"
+
+    try:
+        if platform == 'GitHub':
+            headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
+            resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10)
+            if resp.status_code == 200:
+                rdata = resp.json()
+                contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
+                contenido_texto += f"Lenguaje principal: {rdata.get('language', 'N/A')}\n"
+                contenido_texto += f"URL: {rdata.get('html_url', '')}\n"
+            # README
+            headers_raw = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3.raw"}
+            resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10)
+            if resp_r.status_code == 200:
+                contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
+
+        elif platform == 'GitLab URJC':
+            headers = {"PRIVATE-TOKEN": profile.gitlab_token}
+            resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers, timeout=10)
+            if resp.status_code == 200:
+                rdata = resp.json()
+                contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
+                contenido_texto += f"URL: {rdata.get('web_url', '')}\n"
+                default_branch = rdata.get('default_branch', 'main')
+            else:
+                default_branch = 'main'
+            resp_r = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10)
+            if resp_r.status_code == 200:
+                contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
+
+        elif platform == 'OpenAlex':
+            params = {}
+            if profile.openalex_token:
+                params['api_key'] = profile.openalex_token
+            resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10)
+            if resp.status_code == 200:
+                wdata = resp.json()
+                contenido_texto += f"Título: {wdata.get('title', 'N/A')}\n"
+                authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
+                contenido_texto += f"Autores: {authors}\n"
+                contenido_texto += f"Año: {wdata.get('publication_year', 'N/A')}\n"
+                abs_idx = wdata.get('abstract_inverted_index')
+                if abs_idx:
+                    words = {}
+                    for word, pos_list in abs_idx.items():
+                        for pos in pos_list:
+                            words[pos] = word
+                    abstract = " ".join([words[p] for p in sorted(words.keys())])
+                    contenido_texto += f"\nAbstract:\n{abstract}\n"
+    except requests.exceptions.RequestException:
+        pass
+
+    # Construir prompt según tipo de CV
+    prompts_map = {
+        'extenso': "Genera un CV/portfolio EXTENSO y detallado en español a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura, Competencias demostradas y Conclusiones. Sé completo y profesional.",
+        'una_pagina': "Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA en español. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
+        'tecnologia': "Genera un análisis TECNOLÓGICO detallado en español. Céntrate exclusivamente en: Stack técnico, Frameworks, Librerías, Herramientas de desarrollo, Arquitectura, y Buenas prácticas observadas.",
+        'tfg': "Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico en español. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
+    }
+    prompt = prompts_map.get(cv_type, prompts_map['extenso'])
+    prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
+
+    # Llamar a Gemini
+    resumen_texto = ""
+    error_msg = None
+    try:
+        import time
+        from google import genai
+        client = genai.Client(api_key=profile.gemini_api_key)
+        # Intentar modelos en orden de preferencia (Pro → Flash)
+        modelos = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
+        for modelo in modelos:
+            for intento in range(2):  # 2 intentos por modelo
+                try:
+                    response = client.models.generate_content(
+                        model=modelo, contents=prompt
+                    )
+                    resumen_texto = response.text
+                    break
+                except Exception as model_err:
+                    err_str = str(model_err)
+                    if "RESOURCE_EXHAUSTED" in err_str or "not found" in err_str.lower():
+                        break  # pasar al siguiente modelo
+                    if "UNAVAILABLE" in err_str and intento == 0:
+                        time.sleep(3)  # esperar y reintentar
+                        continue
+                    raise model_err
+            if resumen_texto:
+                break
+        if not resumen_texto and not error_msg:
+            error_msg = "No se pudo generar el resumen. Los modelos están temporalmente saturados. Inténtalo en unos segundos."
+    except Exception as e:
+        error_msg = f"Error al generar resumen con Gemini: {str(e)}"
+
+    # Convertir markdown a HTML
+    resumen_html = ""
+    if resumen_texto:
+        import markdown
+        resumen_html = markdown.markdown(resumen_texto, extensions=['extra', 'codehilite', 'tables', 'fenced_code'])
+
+    cv_type_labels = {'extenso': 'CV Extenso', 'una_pagina': 'CV de Una Página', 'tecnologia': 'CV de Tecnología', 'tfg': 'CV de TFG'}
+
+    return render(request, 'portfolioCV/gemini_resumen.html', {
+        'resumen_html': resumen_html,
+        'resumen_texto': resumen_texto,
+        'error_msg': error_msg,
+        'platform': platform,
+        'item_id': item_id,
+        'item_name': item_name,
+        'cv_type': cv_type,
+        'cv_type_label': cv_type_labels.get(cv_type, cv_type),
+    })
+
+
 def _generar_pdf_completo(user, cv_data):
     """Generador subyacente de PDF para el CV Unificado usando Playwright"""
     from django.template.loader import render_to_string

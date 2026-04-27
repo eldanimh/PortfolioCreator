@@ -34,6 +34,9 @@ urlpatterns = [
     path('mi-cv/remove/', views.eliminar_del_cv, name='eliminar_del_cv'),
     path('mi-cv/descargar/', views.descargar_cv_completo, name='descargar_cv_completo'),
 
+    # Gemini AI
+    path('gemini/resumen/', views.generar_resumen_gemini, name='generar_resumen_gemini'),
+
     # Recursos genéricos (debe ir al final para no interferir con las rutas anteriores)
     path('<str:recurso>/eliminar/', views.eliminar_recurso, name='eliminar_recurso'),
     path('<str:recurso>/', views.detalle_recurso, name='detalle_recurso'),

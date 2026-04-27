@@ -3,3 +3,4 @@ requests
 xhtml2pdf
 social-auth-app-django
 markdown
+google-genai
