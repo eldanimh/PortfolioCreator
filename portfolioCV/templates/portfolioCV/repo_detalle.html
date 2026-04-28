@@ -169,9 +169,19 @@
                     </span>
                 </label>
             </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <label for="llm_model" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: #24292f;">Elige el modelo de IA:</label>
+                <select name="llm_model" id="llm_model" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d0d7de; font-size: 16px;">
+                    <option value="gemini-2.5-pro">🤖 Gemini 2.5 Pro</option>
+                    <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash</option>
+                    <option value="gemini-3.0-flash-preview">🚀 Gemini 3.0 Flash Preview</option>
+                    <option value="local">🧠 Local LM Studio (google/gemma-4-e4b)</option>
+                </select>
+            </div>
 
             <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">
-                🤖 Generar Resumen con Gemini AI
+                🤖 Generar Resumen con IA
             </button>
         </form>
     </div>

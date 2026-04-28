@@ -711,14 +711,19 @@ def generar_resumen_gemini(request):
         return redirect('index')
 
     profile = get_object_or_404(UserProfile, user=request.user)
-    if not profile.gemini_api_key:
-        messages.warning(request, 'Configura tu API Key de Gemini primero.')
-        return redirect('configurar_tokens')
 
     platform = request.POST.get('platform', '')
     item_id = request.POST.get('id', '')
     cv_type = request.POST.get('cv_type', 'extenso')
     item_name = request.POST.get('name', 'Proyecto')
+    llm_model = request.POST.get('llm_model', 'gemini-2.5-pro')
+
+    if llm_model == 'local' and not profile.lm_studio_url:
+        messages.warning(request, 'Configura tu URL de LM Studio Local primero.')
+        return redirect('configurar_tokens')
+    elif llm_model.startswith('gemini') and not profile.gemini_api_key:
+        messages.warning(request, 'Configura tu API Key de Gemini primero.')
+        return redirect('configurar_tokens')
 
     # Recopilar contenido del repo/obra
     contenido_texto = f"Proyecto: {item_name}\nPlataforma: {platform}\n"
@@ -784,37 +789,54 @@ def generar_resumen_gemini(request):
     prompt = prompts_map.get(cv_type, prompts_map['extenso'])
     prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
 
-    # Llamar a Gemini
+    # Llamar al LLM seleccionado
     resumen_texto = ""
     error_msg = None
+    used_model = llm_model
+
     try:
-        import time
-        from google import genai
-        client = genai.Client(api_key=profile.gemini_api_key)
-        # Intentar modelos en orden de preferencia (Pro → Flash)
-        modelos = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
-        for modelo in modelos:
-            for intento in range(2):  # 2 intentos por modelo
-                try:
-                    response = client.models.generate_content(
-                        model=modelo, contents=prompt
-                    )
-                    resumen_texto = response.text
+        if llm_model == 'local':
+            import json
+            url = f"{profile.lm_studio_url.rstrip('/')}/v1/chat/completions"
+            payload = {
+                "model": "google/gemma-4-e4b",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7
+            }
+            resp = requests.post(url, json=payload, timeout=180)
+            if resp.status_code == 200:
+                data = resp.json()
+                resumen_texto = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+            else:
+                error_msg = f"Error de LM Studio ({resp.status_code}): {resp.text}"
+        else:
+            import time
+            from google import genai
+            client = genai.Client(api_key=profile.gemini_api_key)
+            modelos = [llm_model] if llm_model in ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.0-flash-preview"] else ["gemini-2.5-pro"]
+            for modelo in modelos:
+                for intento in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model=modelo, contents=prompt
+                        )
+                        resumen_texto = response.text
+                        used_model = modelo
+                        break
+                    except Exception as model_err:
+                        err_str = str(model_err)
+                        if "RESOURCE_EXHAUSTED" in err_str or "not found" in err_str.lower():
+                            break
+                        if "UNAVAILABLE" in err_str and intento == 0:
+                            time.sleep(3)
+                            continue
+                        raise model_err
+                if resumen_texto:
                     break
-                except Exception as model_err:
-                    err_str = str(model_err)
-                    if "RESOURCE_EXHAUSTED" in err_str or "not found" in err_str.lower():
-                        break  # pasar al siguiente modelo
-                    if "UNAVAILABLE" in err_str and intento == 0:
-                        time.sleep(3)  # esperar y reintentar
-                        continue
-                    raise model_err
-            if resumen_texto:
-                break
-        if not resumen_texto and not error_msg:
-            error_msg = "No se pudo generar el resumen. Los modelos están temporalmente saturados. Inténtalo en unos segundos."
+            if not resumen_texto and not error_msg:
+                error_msg = "No se pudo generar el resumen. El modelo puede estar saturado."
     except Exception as e:
-        error_msg = f"Error al generar resumen con Gemini: {str(e)}"
+        error_msg = f"Error al generar resumen con IA: {str(e)}"
 
     # Convertir markdown a HTML
     resumen_html = ""
@@ -833,6 +855,7 @@ def generar_resumen_gemini(request):
         'item_name': item_name,
         'cv_type': cv_type,
         'cv_type_label': cv_type_labels.get(cv_type, cv_type),
+        'used_model': used_model,
     })
 
 

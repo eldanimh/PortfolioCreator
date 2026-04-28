@@ -11,6 +11,7 @@ class UserProfile(models.Model):
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     openalex_token = models.CharField(max_length=255, blank=True, default='')
     gemini_api_key = models.CharField(max_length=255, blank=True, default='')
+    lm_studio_url = models.CharField(max_length=255, blank=True, default='')
 
 
     def __str__(self):

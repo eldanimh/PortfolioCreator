@@ -7,7 +7,8 @@
 * Al acceder a un repositorio, me creará un CV del portfolio en PDF, y me lo descargará.
 * finalmente implementamos la API de Gemini, para que haga un resumen de cada markdown del proyecto. de cada CV y que te deje elegi entre CV extenso, CV de una pagina , CV de tecnologia, CV del TFG del proyecto que estoy realizando.
 * la clave se gestiona manualmente en la interaz web como se está haciendo
-  
+* NUEVA FUNCIONALIDAD:
+  * vamos a añadir que puedas elegir el LLM entre Gemini 2.5 pro, Gemini 2.5 flash y Gemini 3 flash preview y entre una local que tengo con LM Studio con google/gemma-4-e4b voy a lanzar un servidor y la ip es http://[IP_ADDRESS], como no será siempre la misma ip que se guarde en la lista de tokens de la web como los otros tokens.  
 
 ## Requisitos NO funcionales
 * Usa los templates de DJANGO los comandos de creacion web con DJANGO que DJANGO haga el trabajo sucio de HTML
