@@ -706,9 +706,37 @@ def descargar_cv_completo(request):
 
 @login_required
 def generar_resumen_gemini(request):
-    """Genera un resumen con Gemini AI según el tipo de CV seleccionado"""
+    """Genera un resumen según el tipo de CV seleccionado"""
     if request.method != 'POST':
         return redirect('index')
+
+    platform = request.POST.get('platform', '')
+    item_id = request.POST.get('id', '')
+    cv_type = request.POST.get('cv_type', 'extenso')
+    item_name = request.POST.get('name', 'Proyecto')
+    llm_model = request.POST.get('llm_model', 'gemini-2.5-pro')
+
+
+    cv_type_labels = {'extenso': 'CV Extenso', 'una_pagina': 'CV de Una Página', 'tecnologia': 'CV de Tecnología', 'tfg': 'CV de TFG'}
+
+    return render(request, 'portfolioCV/gemini_resumen.html', {
+        'platform': platform,
+        'item_id': item_id,
+        'item_name': item_name,
+        'cv_type': cv_type,
+        'cv_type_label': cv_type_labels.get(cv_type, cv_type),
+        'llm_model': llm_model,
+        'used_model': llm_model,
+    })
+
+
+from django.http import StreamingHttpResponse
+
+@login_required
+def stream_resumen_gemini(request):
+    """Vista de streaming para devolver chunks de texto"""
+    if request.method != 'POST':
+        return HttpResponse("Method not allowed", status=405)
 
     profile = get_object_or_404(UserProfile, user=request.user)
 
@@ -718,145 +746,116 @@ def generar_resumen_gemini(request):
     item_name = request.POST.get('name', 'Proyecto')
     llm_model = request.POST.get('llm_model', 'gemini-2.5-pro')
 
-    if llm_model == 'local' and not profile.lm_studio_url:
-        messages.warning(request, 'Configura tu URL de LM Studio Local primero.')
-        return redirect('configurar_tokens')
-    elif llm_model.startswith('gemini') and not profile.gemini_api_key:
-        messages.warning(request, 'Configura tu API Key de Gemini primero.')
-        return redirect('configurar_tokens')
+    def event_stream():
+        # Recopilar contenido del repo/obra
+        contenido_texto = f"Proyecto: {item_name}\nPlataforma: {platform}\n"
+        
+        try:
+            if platform == 'GitHub':
+                headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
+                resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    rdata = resp.json()
+                    contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
+                    contenido_texto += f"Lenguaje principal: {rdata.get('language', 'N/A')}\n"
+                    contenido_texto += f"URL: {rdata.get('html_url', '')}\n"
+                headers_raw = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3.raw"}
+                resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10)
+                if resp_r.status_code == 200:
+                    contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
-    # Recopilar contenido del repo/obra
-    contenido_texto = f"Proyecto: {item_name}\nPlataforma: {platform}\n"
+            elif platform == 'GitLab URJC':
+                headers = {"PRIVATE-TOKEN": profile.gitlab_token}
+                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    rdata = resp.json()
+                    contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
+                    contenido_texto += f"URL: {rdata.get('web_url', '')}\n"
+                    default_branch = rdata.get('default_branch', 'main')
+                else:
+                    default_branch = 'main'
+                resp_r = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10)
+                if resp_r.status_code == 200:
+                    contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
-    try:
-        if platform == 'GitHub':
-            headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
-            resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10)
-            if resp.status_code == 200:
-                rdata = resp.json()
-                contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
-                contenido_texto += f"Lenguaje principal: {rdata.get('language', 'N/A')}\n"
-                contenido_texto += f"URL: {rdata.get('html_url', '')}\n"
-            # README
-            headers_raw = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3.raw"}
-            resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10)
-            if resp_r.status_code == 200:
-                contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
+            elif platform == 'OpenAlex':
+                params = {}
+                if profile.openalex_token:
+                    params['api_key'] = profile.openalex_token
+                resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10)
+                if resp.status_code == 200:
+                    wdata = resp.json()
+                    contenido_texto += f"Título: {wdata.get('title', 'N/A')}\n"
+                    authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
+                    contenido_texto += f"Autores: {authors}\n"
+                    contenido_texto += f"Año: {wdata.get('publication_year', 'N/A')}\n"
+                    abs_idx = wdata.get('abstract_inverted_index')
+                    if abs_idx:
+                        words = {}
+                        for word, pos_list in abs_idx.items():
+                            for pos in pos_list:
+                                words[pos] = word
+                        abstract = " ".join([words[p] for p in sorted(words.keys())])
+                        contenido_texto += f"\nAbstract:\n{abstract}\n"
+        except Exception as e:
+            yield f"Error al recuperar datos del repositorio: {str(e)}"
+            return
 
-        elif platform == 'GitLab URJC':
-            headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-            resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers, timeout=10)
-            if resp.status_code == 200:
-                rdata = resp.json()
-                contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
-                contenido_texto += f"URL: {rdata.get('web_url', '')}\n"
-                default_branch = rdata.get('default_branch', 'main')
+        prompts_map = {
+            'extenso': "Genera un CV/portfolio EXTENSO y detallado en español a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura, Competencias demostradas y Conclusiones. Sé completo y profesional.",
+            'una_pagina': "Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA en español. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
+            'tecnologia': "Genera un análisis TECNOLÓGICO detallado en español. Céntrate exclusivamente en: Stack técnico, Frameworks, Librerías, Herramientas de desarrollo, Arquitectura, y Buenas prácticas observadas.",
+            'tfg': "Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico en español. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
+        }
+        prompt = prompts_map.get(cv_type, prompts_map['extenso'])
+        prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
+
+        try:
+            if llm_model == 'local':
+                import json
+                if not profile.lm_studio_url:
+                    yield "Error: Configura tu URL de LM Studio Local en los tokens."
+                    return
+                url = f"{profile.lm_studio_url.rstrip('/')}/v1/chat/completions"
+                payload = {
+                    "model": "llama-3.2-3b-instruct",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                    "stream": True
+                }
+                resp = requests.post(url, json=payload, stream=True, timeout=180)
+                if resp.status_code == 200:
+                    for line in resp.iter_lines():
+                        if line:
+                            line_str = line.decode('utf-8')
+                            if line_str.startswith('data: '):
+                                data_str = line_str[6:]
+                                if data_str == '[DONE]':
+                                    break
+                                try:
+                                    data_json = json.loads(data_str)
+                                    chunk = data_json.get('choices', [{}])[0].get('delta', {}).get('content', '')
+                                    if chunk:
+                                        yield chunk
+                                except json.JSONDecodeError:
+                                    pass
+                else:
+                    yield f"\n\nError de LM Studio ({resp.status_code}): {resp.text}"
             else:
-                default_branch = 'main'
-            resp_r = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10)
-            if resp_r.status_code == 200:
-                contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
+                from google import genai
+                if not profile.gemini_api_key:
+                    yield "Error: Configura tu API Key de Gemini en los tokens."
+                    return
+                client = genai.Client(api_key=profile.gemini_api_key)
+                response = client.models.generate_content_stream(
+                    model=llm_model, contents=prompt
+                )
+                for chunk in response:
+                    yield chunk.text
+        except Exception as e:
+            yield f"\n\nError al generar resumen con IA: {str(e)}"
 
-        elif platform == 'OpenAlex':
-            params = {}
-            if profile.openalex_token:
-                params['api_key'] = profile.openalex_token
-            resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10)
-            if resp.status_code == 200:
-                wdata = resp.json()
-                contenido_texto += f"Título: {wdata.get('title', 'N/A')}\n"
-                authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
-                contenido_texto += f"Autores: {authors}\n"
-                contenido_texto += f"Año: {wdata.get('publication_year', 'N/A')}\n"
-                abs_idx = wdata.get('abstract_inverted_index')
-                if abs_idx:
-                    words = {}
-                    for word, pos_list in abs_idx.items():
-                        for pos in pos_list:
-                            words[pos] = word
-                    abstract = " ".join([words[p] for p in sorted(words.keys())])
-                    contenido_texto += f"\nAbstract:\n{abstract}\n"
-    except requests.exceptions.RequestException:
-        pass
-
-    # Construir prompt según tipo de CV
-    prompts_map = {
-        'extenso': "Genera un CV/portfolio EXTENSO y detallado en español a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura, Competencias demostradas y Conclusiones. Sé completo y profesional.",
-        'una_pagina': "Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA en español. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
-        'tecnologia': "Genera un análisis TECNOLÓGICO detallado en español. Céntrate exclusivamente en: Stack técnico, Frameworks, Librerías, Herramientas de desarrollo, Arquitectura, y Buenas prácticas observadas.",
-        'tfg': "Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico en español. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
-    }
-    prompt = prompts_map.get(cv_type, prompts_map['extenso'])
-    prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
-
-    # Llamar al LLM seleccionado
-    resumen_texto = ""
-    error_msg = None
-    used_model = llm_model
-
-    try:
-        if llm_model == 'local':
-            import json
-            url = f"{profile.lm_studio_url.rstrip('/')}/v1/chat/completions"
-            payload = {
-                "model": "google/gemma-4-e4b",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7
-            }
-            resp = requests.post(url, json=payload, timeout=180)
-            if resp.status_code == 200:
-                data = resp.json()
-                resumen_texto = data.get('choices', [{}])[0].get('message', {}).get('content', '')
-            else:
-                error_msg = f"Error de LM Studio ({resp.status_code}): {resp.text}"
-        else:
-            import time
-            from google import genai
-            client = genai.Client(api_key=profile.gemini_api_key)
-            modelos = [llm_model] if llm_model in ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.0-flash-preview"] else ["gemini-2.5-pro"]
-            for modelo in modelos:
-                for intento in range(2):
-                    try:
-                        response = client.models.generate_content(
-                            model=modelo, contents=prompt
-                        )
-                        resumen_texto = response.text
-                        used_model = modelo
-                        break
-                    except Exception as model_err:
-                        err_str = str(model_err)
-                        if "RESOURCE_EXHAUSTED" in err_str or "not found" in err_str.lower():
-                            break
-                        if "UNAVAILABLE" in err_str and intento == 0:
-                            time.sleep(3)
-                            continue
-                        raise model_err
-                if resumen_texto:
-                    break
-            if not resumen_texto and not error_msg:
-                error_msg = "No se pudo generar el resumen. El modelo puede estar saturado."
-    except Exception as e:
-        error_msg = f"Error al generar resumen con IA: {str(e)}"
-
-    # Convertir markdown a HTML
-    resumen_html = ""
-    if resumen_texto:
-        import markdown
-        resumen_html = markdown.markdown(resumen_texto, extensions=['extra', 'codehilite', 'tables', 'fenced_code'])
-
-    cv_type_labels = {'extenso': 'CV Extenso', 'una_pagina': 'CV de Una Página', 'tecnologia': 'CV de Tecnología', 'tfg': 'CV de TFG'}
-
-    return render(request, 'portfolioCV/gemini_resumen.html', {
-        'resumen_html': resumen_html,
-        'resumen_texto': resumen_texto,
-        'error_msg': error_msg,
-        'platform': platform,
-        'item_id': item_id,
-        'item_name': item_name,
-        'cv_type': cv_type,
-        'cv_type_label': cv_type_labels.get(cv_type, cv_type),
-        'used_model': used_model,
-    })
+    return StreamingHttpResponse(event_stream(), content_type='text/plain; charset=utf-8')
 
 
 def _generar_pdf_completo(user, cv_data):

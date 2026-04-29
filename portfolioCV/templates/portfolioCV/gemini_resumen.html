@@ -3,36 +3,83 @@
 {% block title %}{{ cv_type_label }} — {{ item_name }} — Portfolio Creator{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" style="max-width: 900px; margin: 0 auto;">
     <a href="javascript:history.back()" class="back-link">← Volver al detalle</a>
     <h1 class="page-title">🤖 {{ cv_type_label }}</h1>
-    <p style="color: #57606a;">Resumen generado con IA para <strong>{{ item_name }}</strong> ({{ platform }})</p>
+    <p style="color: #57606a;">Resumen en tiempo real para <strong>{{ item_name }}</strong> ({{ platform }})</p>
 </div>
 
-{% if error_msg %}
-<div class="alert alert-error">{{ error_msg }}</div>
-{% endif %}
-
-{% if resumen_html %}
-<div class="detail-container" style="max-width: 900px;">
+<div class="detail-container" style="max-width: 900px; margin: 0 auto; margin-top: 1.5rem;">
     <div class="detail-card gemini-result-card">
         <div class="gemini-badge">
             <span class="gemini-badge-icon">🤖</span>
-            <span>Generado por IA ({{ used_model|default:"Gemini" }})</span>
+            <span>Generando con IA ({{ used_model|default:"Gemini" }})... <span id="spinner" style="display:inline-block; animation: spin 1s linear infinite;">⏳</span></span>
             <span class="gemini-badge-type">{{ cv_type_label }}</span>
         </div>
-        <div class="gemini-content readme-rendered">
-            {{ resumen_html|safe }}
+        <div class="gemini-content readme-rendered" id="resumen-content">
+            <!-- El contenido se rellenará aquí en streaming -->
         </div>
+        
+        <div id="error-container" class="alert alert-error" style="display: none; margin-top: 1rem;"></div>
     </div>
 
     <div class="detail-actions" style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
         <a href="javascript:history.back()" class="btn btn-secondary">← Volver</a>
     </div>
 </div>
-{% elif not error_msg %}
-<div class="empty-state-container">
-    <p class="empty-state">No se generó ningún resumen. Inténtalo de nuevo.</p>
-</div>
-{% endif %}
+
+<style>
+@keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+
+<!-- Añadimos marked.js para renderizar Markdown -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const contentDiv = document.getElementById('resumen-content');
+    const spinner = document.getElementById('spinner');
+    const errorDiv = document.getElementById('error-container');
+    let fullText = "";
+
+    const formData = new FormData();
+    formData.append('platform', '{{ platform|escapejs }}');
+    formData.append('id', '{{ item_id|escapejs }}');
+    formData.append('name', '{{ item_name|escapejs }}');
+    formData.append('cv_type', '{{ cv_type|escapejs }}');
+    formData.append('llm_model', '{{ llm_model|escapejs }}');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch("{% url 'stream_resumen_gemini' %}", {
+        method: 'POST',
+        body: formData,
+    })
+    .then(async response => {
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                spinner.style.display = 'none';
+                break;
+            }
+            
+            const chunk = decoder.decode(value, {stream: true});
+            fullText += chunk;
+            
+            // Usamos marked para parsear el string acumulado
+            contentDiv.innerHTML = marked.parse(fullText);
+        }
+    })
+    .catch(error => {
+        spinner.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error en la conexión con la IA: ${error.message}`;
+    });
+});
+</script>
 {% endblock %}

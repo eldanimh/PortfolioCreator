@@ -36,6 +36,7 @@ urlpatterns = [
 
     # Gemini AI
     path('gemini/resumen/', views.generar_resumen_gemini, name='generar_resumen_gemini'),
+    path('gemini/stream/', views.stream_resumen_gemini, name='stream_resumen_gemini'),
 
     # Recursos genéricos (debe ir al final para no interferir con las rutas anteriores)
     path('<str:recurso>/eliminar/', views.eliminar_recurso, name='eliminar_recurso'),
