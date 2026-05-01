@@ -10,7 +10,7 @@
 * NUEVA FUNCIONALIDAD:
   * vamos a añadir que puedas elegir el LLM entre Gemini 2.5 pro, Gemini 2.5 flash y Gemini 3 flash preview y entre una local que tengo con LM Studio con llama-3.2-3b-instruct voy a lanzar un servidor y la ip es http://[IP_ADDRESS], como no será siempre la misma ip que se guarde en la lista de tokens de la web como los otros tokens. 
   * mini funcionalidad: que cuando llames a la IA cualquiera gemini o local, que cuando empieze a generar texto lo envíe y haga la animacion de escribiendo en tiempo real como cuando hablo con Gemini me va escribiendo el texto poco a poco.
-* Nueva Funcionalidad 1/05/2026: añade el logo.png en el index justo encima de Portofolio creator en el medio y centrado, y que sea el favicon de la web.
+* Nueva Funcionalidad 1/05/2026: añade el logo.svg en el index justo encima de Portofolio creator en el medio y centrado, y que sea el favicon de la web.
 
 ## Requisitos NO funcionales
 * Usa los templates de DJANGO los comandos de creacion web con DJANGO que DJANGO haga el trabajo sucio de HTML
