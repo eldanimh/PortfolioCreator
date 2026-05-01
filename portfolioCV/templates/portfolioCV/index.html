@@ -1,11 +1,13 @@
 {% extends "portfolioCV/base.html" %}
+{% load static %}
 
 {% block title %}Portfolio Creator — Inicio{% endblock %}
 
 {% block content %}
 <div class="hero-section">
-    <h1 class="hero-title">Portfolio Creator</h1>
-    <p class="hero-subtitle">Elige entre GitLab de la URJC o GitHub:</p>
+    <img src="{% static 'portfolioCV/img/logo.png' %}" alt="Portfolio Creator Logo"
+        style="width: 350px; height: auto; margin: 0 auto 1.5rem auto; display: block;">
+    <p class="hero-subtitle">Elige entre GitLab de la URJC, GitHub y OpenAlex:</p>
 </div>
 
 <div class="platforms-grid">

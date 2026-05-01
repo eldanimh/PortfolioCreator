@@ -1,12 +1,17 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Portfolio Creator{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}">
+    <link rel="shortcut icon" type="image/png" href="{% static 'portfolioCV/img/logo.png' %}?v=4">
+    <link rel="icon" type="image/png" href="{% static 'portfolioCV/img/logo.png' %}?v=4">
+    <link rel="apple-touch-icon" href="{% static 'portfolioCV/img/logo.png' %}?v=4">
+    <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}?v=3">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-container">
@@ -15,12 +20,12 @@
             </a>
             <div class="nav-links">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'cv_builder' %}" class="nav-link">📄 Mi CV</a>
-                    <a href="{% url 'configurar_tokens' %}" class="nav-link">⚙ Tokens</a>
-                    <a href="{% url 'logout' %}" class="nav-link nav-link-logout">Cerrar sesión</a>
+                <a href="{% url 'cv_builder' %}" class="nav-link">📄 Mi CV</a>
+                <a href="{% url 'configurar_tokens' %}" class="nav-link">⚙ Tokens</a>
+                <a href="{% url 'logout' %}" class="nav-link nav-link-logout">Cerrar sesión</a>
                 {% else %}
-                    <a href="{% url 'login' %}" class="nav-link">Iniciar sesión</a>
-                    <a href="{% url 'registro' %}" class="nav-link nav-link-accent">Registrarse</a>
+                <a href="{% url 'login' %}" class="nav-link">Iniciar sesión</a>
+                <a href="{% url 'registro' %}" class="nav-link nav-link-accent">Registrarse</a>
                 {% endif %}
             </div>
         </div>
@@ -43,7 +48,9 @@
     <footer class="footer">
         <div class="footer-content">
             <p>Portfolio Creator — Trabajo Final LTAW — URJC 2026</p>
+            <p><a href="https://github.com/eldanimh" style="color: rgba(255, 255, 255, 0.5);" target="_blank">Daniel Martín Hurtado — @eldanimh</a></p>
         </div>
     </footer>
 </body>
+
 </html>

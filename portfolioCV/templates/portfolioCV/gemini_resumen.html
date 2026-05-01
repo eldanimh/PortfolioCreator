@@ -3,13 +3,13 @@
 {% block title %}{{ cv_type_label }} — {{ item_name }} — Portfolio Creator{% endblock %}
 
 {% block content %}
-<div class="page-header" style="max-width: 900px; margin: 0 auto;">
+<div class="page-header">
     <a href="javascript:history.back()" class="back-link">← Volver al detalle</a>
     <h1 class="page-title">🤖 {{ cv_type_label }}</h1>
     <p style="color: #57606a;">Resumen en tiempo real para <strong>{{ item_name }}</strong> ({{ platform }})</p>
 </div>
 
-<div class="detail-container" style="max-width: 900px; margin: 0 auto; margin-top: 1.5rem;">
+<div class="detail-container" style="margin-top: 1.5rem;">
     <div class="detail-card gemini-result-card">
         <div class="gemini-badge">
             <span class="gemini-badge-icon">🤖</span>
