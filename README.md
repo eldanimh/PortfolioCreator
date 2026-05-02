@@ -6,11 +6,11 @@
 * Titulación: GISAM, Grado en Ingeniería Audiovisuales y Multimedia
 * Cuenta en laboratorios: eldanimh
 * Cuenta URJC: d.martinh.2021@alumnos.urjc.es
-* Vídeo básico (URL): [ENLACE AL VÍDEO AQUÍ] todo
-* Vídeo parte opcional (URL): [ENLACE AL VÍDEO AQUÍ]
-* Despliegue (URL): [ENLACE A PYTHONANYWHERE/RENDER SI LO SUBES]
+* Vídeo básico (URL): [ENLACE AL VÍDEO AQUÍ] ❌ 
+* Vídeo parte opcional (URL): [ENLACE AL VÍDEO AQUÍ] ❌
+* Despliegue (URL): [ENLACE A PYTHONANYWHERE/RENDER](https://eldanimh.pythonanywhere.com)
 * Usuarios y contraseñas: testuser / testpassword123
-* Cuenta Admin Site: admin / admin123 (rellenar si creaste un superuser distinto)
+* Cuenta Admin Site: admin / ovVf0YtxSpZGhIK
 
 ## Recursos y métodos HTTP
 

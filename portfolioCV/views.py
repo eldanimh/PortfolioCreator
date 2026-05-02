@@ -14,6 +14,10 @@ from .forms import RegistroForm, TokensForm, ContenidoForm
 GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"
 GITHUB_API_URL = "https://api.github.com"
 
+# ─── Proxy PythonAnywhere ──────────────────────────────────
+import os
+PA_PROXIES = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
+
 
 # ─── Página principal ──────────────────────────────────────
 def index(request):
@@ -134,12 +138,16 @@ def gitlab_repos(request):
     repos = []
     error_msg = None
 
+    # Configuración de proxy para PythonAnywhere
+    proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
+
     try:
         response = requests.get(
             f"{GITLAB_URJC_URL}/projects",
             headers=headers,
             params={"owned": True, "per_page": 50},
-            timeout=10
+            timeout=10,
+            proxies=proxies
         )
         if response.status_code == 200:
             repos = response.json()
@@ -172,12 +180,16 @@ def github_repos(request):
     repos = []
     error_msg = None
 
+    # Configuración de proxy para PythonAnywhere
+    proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
+
     try:
         response = requests.get(
             f"{GITHUB_API_URL}/user/repos",
             headers=headers,
             params={"per_page": 50, "sort": "updated"},
-            timeout=10
+            timeout=10,
+            proxies=proxies
         )
         if response.status_code == 200:
             repos = response.json()
@@ -209,8 +221,11 @@ def openalex_repos(request):
         if profile.openalex_token:
             params["api_key"] = profile.openalex_token
             
+        # Configuración de proxy para PythonAnywhere
+        proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
+            
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=10, proxies=proxies)
             if response.status_code == 200:
                 data = response.json()
                 results = data.get('results', [])
@@ -250,7 +265,7 @@ def openalex_repo_detalle(request, work_id):
         params["api_key"] = profile.openalex_token
         
     try:
-        resp = requests.get(url, params=params, timeout=10)
+        resp = requests.get(url, params=params, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             work = resp.json()
             repo = {
@@ -294,12 +309,12 @@ def gitlab_repo_detalle(request, repo_id):
 
     try:
         # Obtener info del proyecto
-        resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10)
+        resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
 
         # Obtener lenguajes
-        resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10)
+        resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
     except requests.exceptions.RequestException as e:
@@ -328,11 +343,11 @@ def github_repo_detalle(request, owner, repo_name):
     error_msg = None
 
     try:
-        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10)
+        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
 
-        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10)
+        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
     except requests.exceptions.RequestException as e:
@@ -360,24 +375,24 @@ def generar_cv_gitlab(request, repo_id):
     tree = []
     readme = ""
     try:
-        resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10)
+        resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
         
         default_branch = repo.get('default_branch', 'main')
 
-        resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10)
+        resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
         # Árbol de archivos
-        resp_tree = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10)
+        resp_tree = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES)
         if resp_tree.status_code == 200:
             tree = [item['path'] for item in resp_tree.json() if item.get('type') == 'blob']
         
         # README
         # Intentamos obtenerlo asumiendo que se llama README.md
-        resp_readme = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10)
+        resp_readme = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
@@ -403,18 +418,18 @@ def generar_cv_github(request, owner, repo_name):
     tree = []
     readme = ""
     try:
-        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10)
+        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
 
         default_branch = repo.get('default_branch', 'main')
 
-        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10)
+        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
         # Árbol de archivos
-        resp_tree = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/git/trees/{default_branch}", headers=headers, params={"recursive": "1"}, timeout=10)
+        resp_tree = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/git/trees/{default_branch}", headers=headers, params={"recursive": "1"}, timeout=10, proxies=PA_PROXIES)
         if resp_tree.status_code == 200:
              # filtramos para obtener solo paths de archivos que no sean subárboles (blob)
             tree_data = resp_tree.json().get('tree', [])
@@ -425,7 +440,7 @@ def generar_cv_github(request, owner, repo_name):
             "Authorization": f"Bearer {profile.github_token}",
             "Accept": "application/vnd.github.v3.raw"
         }
-        resp_readme = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/readme", headers=headers_readme, timeout=10)
+        resp_readme = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/readme", headers=headers_readme, timeout=10, proxies=PA_PROXIES)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
@@ -454,7 +469,7 @@ def generar_cv_openalex(request, work_id):
     readme = ""
     
     try:
-        resp = requests.get(url, params=params, timeout=10)
+        resp = requests.get(url, params=params, timeout=10, proxies=PA_PROXIES)
         work = resp.json() if resp.status_code == 200 else {}
         
         if work:
@@ -701,7 +716,7 @@ def descargar_cv_completo(request):
             nuevo_item = item.copy()
             if item['platform'] == 'GitHub':
                 headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
-                resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5)
+                resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     nuevo_item['description'] = rdata.get('description', '')
@@ -710,7 +725,7 @@ def descargar_cv_completo(request):
                     
             elif item['platform'] == 'GitLab URJC':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item['id']}", headers=headers, timeout=5)
+                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     nuevo_item['description'] = rdata.get('description', '')
@@ -720,7 +735,7 @@ def descargar_cv_completo(request):
                 params = {}
                 if profile.openalex_token:
                     params['api_key'] = profile.openalex_token
-                resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5)
+                resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     wdata = resp.json()
                     authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
@@ -805,20 +820,20 @@ def stream_resumen_gemini(request):
         try:
             if platform == 'GitHub':
                 headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
-                resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10)
+                resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
                     contenido_texto += f"Lenguaje principal: {rdata.get('language', 'N/A')}\n"
                     contenido_texto += f"URL: {rdata.get('html_url', '')}\n"
                 headers_raw = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3.raw"}
-                resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10)
+                resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10, proxies=PA_PROXIES)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
             elif platform == 'GitLab URJC':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers, timeout=10)
+                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
@@ -826,7 +841,7 @@ def stream_resumen_gemini(request):
                     default_branch = rdata.get('default_branch', 'main')
                 else:
                     default_branch = 'main'
-                resp_r = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10)
+                resp_r = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
@@ -834,7 +849,7 @@ def stream_resumen_gemini(request):
                 params = {}
                 if profile.openalex_token:
                     params['api_key'] = profile.openalex_token
-                resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10)
+                resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     wdata = resp.json()
                     contenido_texto += f"Título: {wdata.get('title', 'N/A')}\n"
@@ -875,7 +890,7 @@ def stream_resumen_gemini(request):
                     "temperature": 0.7,
                     "stream": True
                 }
-                resp = requests.post(url, json=payload, stream=True, timeout=180)
+                resp = requests.post(url, json=payload, stream=True, timeout=180, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     for line in resp.iter_lines():
                         if line:
@@ -899,9 +914,16 @@ def stream_resumen_gemini(request):
                     yield "Error: Configura tu API Key de NVIDIA en los tokens."
                     return
                 
+                # Configuración específica para PythonAnywhere (Free Tier requiere proxy)
+                if PA_PROXIES:
+                    http_client = httpx.Client(proxies=PA_PROXIES["http"])
+                else:
+                    http_client = httpx.Client()
+
                 client = OpenAI(
                   base_url="https://integrate.api.nvidia.com/v1",
-                  api_key=profile.nvidia_api_key
+                  api_key=profile.nvidia_api_key,
+                  http_client=http_client
                 )
                 
                 response = client.chat.completions.create(
