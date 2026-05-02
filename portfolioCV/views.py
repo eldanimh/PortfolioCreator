@@ -22,7 +22,10 @@ PA_PROXIES = {"http": "http://proxy.server:3128", "https": "http://proxy.server:
 # ─── Página principal ──────────────────────────────────────
 def index(request):
     """Página principal con dos apartados: GitLab URJC y GitHub"""
-    contenidos = ContenidoData.objects.all()
+    if request.user.is_authenticated:
+        contenidos = ContenidoData.objects.filter(usuario=request.user.username).order_by('-fecha_creacion')
+    else:
+        contenidos = []
 
     if request.method == 'POST':
         if not request.user.is_authenticated:
