@@ -951,6 +951,7 @@ def stream_resumen_gemini(request):
 def _generar_pdf_completo(user, cv_data):
     """Generador subyacente de PDF para el CV Unificado usando Playwright"""
     from django.template.loader import render_to_string
+    import markdown
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
