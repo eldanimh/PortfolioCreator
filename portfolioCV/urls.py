@@ -31,6 +31,7 @@ urlpatterns = [
     # CV Profesional Builder
     path('mi-cv/', views.cv_builder, name='cv_builder'),
     path('mi-cv/add/', views.agregar_al_cv, name='agregar_al_cv'),
+    path('mi-cv/add-ia/', views.agregar_resumen_ia_al_cv, name='agregar_resumen_ia_al_cv'),
     path('mi-cv/remove/', views.eliminar_del_cv, name='eliminar_del_cv'),
     path('mi-cv/descargar/', views.descargar_cv_completo, name='descargar_cv_completo'),
 

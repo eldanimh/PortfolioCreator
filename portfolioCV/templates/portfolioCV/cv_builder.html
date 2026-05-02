@@ -14,11 +14,21 @@
     <div class="card" style="background: var(--card-bg, #fff); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #eaecef); align-self: start;">
         <h3>Datos Personales</h3>
         <hr style="margin: 10px 0; border: none; border-top: 1px solid #eaecef;">
-        <form method="post" action="{% url 'cv_builder' %}">
+        <form method="post" action="{% url 'cv_builder' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
-                <label class="form-label">URL Fotografía (Opcional)</label>
-                <input type="url" name="photo" value="{{ cv_data.personal_info.photo }}" class="form-input" placeholder="https://ejemplo.com/foto.jpg">
+                <label class="form-label">Fotografía (Sube una imagen)</label>
+                {% if cv_data.personal_info.photo %}
+                    <div style="margin-bottom: 10px;">
+                        <img src="{{ cv_data.personal_info.photo }}" alt="Foto actual" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%;">
+                    </div>
+                {% endif %}
+                <input type="file" name="photo" accept="image/*" class="form-input">
+                <small style="color: #57606a;">Si subes una foto, reemplazará a la anterior.</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Nombre Completo (Opcional)</label>
+                <input type="text" name="name" value="{{ cv_data.personal_info.name|default:'' }}" class="form-input" placeholder="Tu nombre para el CV">
             </div>
             <div class="form-group">
                 <label class="form-label">LinkedIn (Opcional)</label>
@@ -27,6 +37,10 @@
             <div class="form-group">
                 <label class="form-label">Teléfono (Opcional)</label>
                 <input type="text" name="phone" value="{{ cv_data.personal_info.phone }}" class="form-input" placeholder="+34 600... ">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Correo Electrónico (Opcional)</label>
+                <input type="email" name="email" value="{{ cv_data.personal_info.email|default:'' }}" class="form-input" placeholder="tu@correo.com">
             </div>
             <div class="form-group">
                 <label class="form-label">Acerca de mí</label>
@@ -41,9 +55,14 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h3>Proyectos Agregados ({{ cv_data.items|length }})</h3>
             {% if cv_data.items %}
-            <a href="{% url 'descargar_cv_completo' %}" class="btn btn-primary">
-                📥 Descargar CV PDF
-            </a>
+            <div style="display: flex; gap: 10px;">
+                <a href="{% url 'descargar_cv_completo' %}?format=html" class="btn btn-secondary">
+                    🌐 Descargar HTML
+                </a>
+                <a href="{% url 'descargar_cv_completo' %}" class="btn btn-primary">
+                    📥 Descargar PDF
+                </a>
+            </div>
             {% endif %}
         </div>
         

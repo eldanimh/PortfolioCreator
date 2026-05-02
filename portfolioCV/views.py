@@ -586,7 +586,7 @@ def _get_cv_data(user):
         data = {}
     
     if 'personal_info' not in data:
-        data['personal_info'] = {'photo': '', 'linkedin': '', 'phone': '', 'about': ''}
+        data['personal_info'] = {'photo': '', 'name': '', 'linkedin': '', 'phone': '', 'email': '', 'about': ''}
     if 'items' not in data:
         data['items'] = []
         
@@ -598,9 +598,19 @@ def cv_builder(request):
     contenido_obj, data = _get_cv_data(request.user)
     
     if request.method == 'POST':
-        data['personal_info']['photo'] = request.POST.get('photo', '').strip()
+        import base64
+        if 'photo' in request.FILES:
+            try:
+                photo_file = request.FILES['photo']
+                photo_b64 = base64.b64encode(photo_file.read()).decode('utf-8')
+                data['personal_info']['photo'] = f"data:{photo_file.content_type};base64,{photo_b64}"
+            except Exception:
+                pass
+        
+        data['personal_info']['name'] = request.POST.get('name', '').strip()
         data['personal_info']['linkedin'] = request.POST.get('linkedin', '').strip()
         data['personal_info']['phone'] = request.POST.get('phone', '').strip()
+        data['personal_info']['email'] = request.POST.get('email', '').strip()
         data['personal_info']['about'] = request.POST.get('about', '').strip()
         
         contenido_obj.contenido = json.dumps(data)
@@ -636,6 +646,29 @@ def agregar_al_cv(request):
                 messages.info(request, f'"{name}" ya estaba en tu CV Profesional.')
                 
         return redirect(request.META.get('HTTP_REFERER', 'cv_builder'))
+    return redirect('index')
+
+@login_required
+def agregar_resumen_ia_al_cv(request):
+    """Agrega un texto generado por IA a la cesta del CV"""
+    import uuid
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        item_name = request.POST.get('name')
+        
+        if content and item_name:
+            contenido_obj, data = _get_cv_data(request.user)
+            data['items'].append({
+                'platform': 'IA Summary',
+                'id': str(uuid.uuid4()),
+                'name': f'Resumen IA - {item_name}',
+                'content': content
+            })
+            contenido_obj.contenido = json.dumps(data)
+            contenido_obj.save()
+            messages.success(request, f'Resumen de "{item_name}" añadido a tu CV Profesional.')
+                
+        return redirect('cv_builder')
     return redirect('index')
 
 @login_required
@@ -701,6 +734,25 @@ def descargar_cv_completo(request):
             
     data['items'] = enriched_items
             
+    if request.GET.get('format') == 'html':
+        from django.template.loader import render_to_string
+        import markdown
+        if data['personal_info'].get('about'):
+            data['personal_info']['about_html'] = markdown.markdown(data['personal_info']['about'], extensions=['fenced_code', 'tables'])
+        else:
+            data['personal_info']['about_html'] = ""
+            
+        # Parse IA Summaries markdown for HTML view
+        for item in data['items']:
+            if item.get('platform') == 'IA Summary':
+                item['content_html'] = markdown.markdown(item.get('content', ''), extensions=['fenced_code', 'tables'])
+                
+        context = {'user': request.user, 'cv': data}
+        html_string = render_to_string('portfolioCV/cv_web_portfolio_template.html', context)
+        response = HttpResponse(html_string, content_type='text/html; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="cv_profesional.html"'
+        return response
+        
     return _generar_pdf_completo(request.user, data)
 
 
@@ -802,7 +854,7 @@ def stream_resumen_gemini(request):
             return
 
         prompts_map = {
-            'extenso': "Genera un CV/portfolio EXTENSO y detallado en español a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura, Competencias demostradas y Conclusiones. Sé completo y profesional.",
+            'extenso': "Genera un CV/portfolio EXTENSO y detallado en español a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura (DEBES incluir obligatoriamente el árbol de directorios con los archivos ordenados), Competencias demostradas y Conclusiones. Sé completo y profesional.",
             'una_pagina': "Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA en español. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
             'tecnologia': "Genera un análisis TECNOLÓGICO detallado en español. Céntrate exclusivamente en: Stack técnico, Frameworks, Librerías, Herramientas de desarrollo, Arquitectura, y Buenas prácticas observadas.",
             'tfg': "Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico en español. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
@@ -818,7 +870,7 @@ def stream_resumen_gemini(request):
                     return
                 url = f"{profile.lm_studio_url.rstrip('/')}/v1/chat/completions"
                 payload = {
-                    "model": "llama-3.2-3b-instruct",
+                    "model": "qwen2.5-7b-instruct",
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.7,
                     "stream": True
@@ -867,9 +919,14 @@ def _generar_pdf_completo(user, cv_data):
     buffer = io.BytesIO()
     
     if cv_data['personal_info'].get('about'):
-        cv_data['personal_info']['about_html'] = markdown.markdown(cv_data['personal_info']['about'])
+        cv_data['personal_info']['about_html'] = markdown.markdown(cv_data['personal_info']['about'], extensions=['fenced_code', 'tables'])
     else:
         cv_data['personal_info']['about_html'] = ""
+        
+    # Parse IA Summaries markdown for PDF view
+    for item in cv_data['items']:
+        if item.get('platform') == 'IA Summary':
+            item['content_html'] = markdown.markdown(item.get('content', ''), extensions=['fenced_code', 'tables'])
     
     context = {'user': user, 'cv': cv_data}
     html_string = render_to_string('portfolioCV/cv_profesional_template.html', context)

@@ -25,6 +25,14 @@
 
     <div class="detail-actions" style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
         <a href="javascript:history.back()" class="btn btn-secondary">← Volver</a>
+        <form method="post" action="{% url 'agregar_resumen_ia_al_cv' %}" id="add-to-cv-form" style="display: none;">
+            {% csrf_token %}
+            <input type="hidden" name="name" value="{{ item_name }}">
+            <input type="hidden" name="content" id="ia-content-input">
+            <button type="submit" class="btn btn-primary" style="background: #2ea043; border-color: #2ea043; color: white;">
+                + Añadir a Mi CV Profesional
+            </button>
+        </form>
     </div>
 </div>
 
@@ -65,6 +73,8 @@ document.addEventListener("DOMContentLoaded", function() {
             const { done, value } = await reader.read();
             if (done) {
                 spinner.style.display = 'none';
+                document.getElementById('add-to-cv-form').style.display = 'block';
+                document.getElementById('ia-content-input').value = fullText;
                 break;
             }
             

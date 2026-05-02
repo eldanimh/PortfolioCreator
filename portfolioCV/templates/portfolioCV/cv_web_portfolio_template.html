@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio - {{ cv.personal_info.name|default:user.username|title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #2563eb;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0f172a;
+                --text-main: #f8fafc;
+                --text-muted: #94a3b8;
+                --accent: #3b82f6;
+                --card-bg: #1e293b;
+                --border: #334155;
+                --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+                --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        a:hover {
+            opacity: 0.8;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Navbar */
+        header {
+            position: sticky;
+            top: 0;
+            background-color: color-mix(in srgb, var(--bg-color) 80%, transparent);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 4rem;
+        }
+
+        .nav-brand {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-main);
+            letter-spacing: -0.025em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 6rem 0;
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+        }
+
+        .hero-content {
+            flex: 1;
+        }
+
+        .hero-greeting {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.875rem;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.025em;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+            max-width: 600px;
+        }
+
+        .hero-image {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--card-bg);
+            box-shadow: var(--shadow);
+        }
+
+        /* Section Global */
+        section {
+            padding: 5rem 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            letter-spacing: -0.025em;
+        }
+
+        /* About Section */
+        .about-text {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 800px;
+        }
+        
+        .about-text p {
+            margin-bottom: 1rem;
+        }
+
+        /* Projects Grid */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .project-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            height: 380px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .project-card.expandable {
+            cursor: pointer;
+        }
+
+        .project-card.expandable::after {
+            content: "Ampliar para leer ↓";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 140px;
+            background: linear-gradient(transparent, var(--card-bg) 60%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent);
+            pointer-events: none;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--accent);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-hover);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow-y: auto;
+            padding: 3rem;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            background: transparent;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            line-height: 1;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--text-main);
+        }
+        
+        /* Ocultar el enlace de "Ver Proyecto" dentro del modal para reestilarlo si es necesario */
+        .modal-content .project-link-container {
+            margin-top: 2rem;
+        }
+
+        .project-header {
+            margin-bottom: 1rem;
+        }
+
+        .project-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            background-color: var(--bg-color);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .badge.github { background-color: #24292f; color: white; border-color: #24292f; }
+        .badge.gitlab { background-color: #fc6d26; color: white; border-color: #fc6d26; }
+        .badge.openalex { background-color: #f39c12; color: white; border-color: #f39c12; }
+        .badge.ia { background-color: #2ea043; color: white; border-color: #2ea043; }
+
+        .project-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        /* IA Summary specific styling */
+        .ia-content {
+            background-color: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            margin-top: 1rem;
+        }
+        
+        .ia-content h1, .ia-content h2, .ia-content h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+        
+        .ia-content p {
+            margin-bottom: 0.75rem;
+        }
+        
+        .ia-content ul, .ia-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .ia-content pre {
+            background-color: var(--card-bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        
+        .ia-content code {
+            font-family: monospace;
+            background-color: var(--card-bg);
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+            font-size: 0.85em;
+        }
+        
+        .ia-content pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: 1em;
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border);
+            padding: 3rem 0;
+            text-align: center;
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .contact-links {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .contact-links a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+        
+        .contact-links a:hover {
+            color: var(--accent);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                flex-direction: column-reverse;
+                text-align: center;
+                padding: 4rem 0;
+                gap: 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .nav-links {
+                display: none; /* Can be expanded to a mobile menu if needed */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="nav-brand">{{ cv.personal_info.name|default:user.username|title }}</div>
+            <nav class="nav-links">
+                {% if cv.personal_info.about_html %}<a href="#about">Sobre Mí</a>{% endif %}
+                <a href="#projects">Portfolio</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="hero" class="hero">
+            <div class="hero-content">
+                <span class="hero-greeting">Hola, soy</span>
+                <h1>{{ cv.personal_info.name|default:user.username|title }}</h1>
+                <p>Ingeniero de Software & Desarrollador. Bienvenido a mi portfolio digital donde agrupo mis proyectos más destacados, investigaciones y análisis arquitectónicos impulsados por Inteligencia Artificial.</p>
+            </div>
+            {% if cv.personal_info.photo %}
+            <img src="{{ cv.personal_info.photo }}" alt="Foto de perfil" class="hero-image">
+            {% endif %}
+        </section>
+
+        {% if cv.personal_info.about_html %}
+        <section id="about">
+            <h2 class="section-title">Sobre Mí</h2>
+            <div class="about-text">
+                {{ cv.personal_info.about_html|safe }}
+            </div>
+        </section>
+        {% endif %}
+
+        <section id="projects">
+            <h2 class="section-title">Portfolio Destacado</h2>
+            
+            {% if not cv.items %}
+                <p style="color: var(--text-muted);">No hay proyectos agregados aún.</p>
+            {% else %}
+                <div class="projects-grid">
+                    {% for item in cv.items %}
+                    <article class="project-card">
+                        <div class="project-header">
+                            <h3 class="project-title">{{ item.name }}</h3>
+                            <div class="badge-container">
+                                <span class="badge {% if item.platform == 'GitHub' %}github{% elif item.platform == 'GitLab URJC' %}gitlab{% elif item.platform == 'OpenAlex' %}openalex{% elif item.platform == 'IA Summary' %}ia{% endif %}">
+                                    {{ item.platform }}
+                                </span>
+                                {% if item.language %}
+                                <span class="badge">{{ item.language }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if item.description %}
+                        <p class="project-desc">{{ item.description }}</p>
+                        {% endif %}
+                        
+                        {% if item.content_html %}
+                        <div class="ia-content">
+                            {{ item.content_html|safe }}
+                        </div>
+                        {% endif %}
+
+                        {% if item.url %}
+                        <div class="project-link-container" style="margin-top: auto; padding-top: 1rem;">
+                            <a href="{{ item.url }}" target="_blank" style="font-weight: 500; font-size: 0.9rem;">Ver Proyecto →</a>
+                        </div>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="nav-brand">{{ cv.personal_info.name|default:user.username|title }}</div>
+            <div class="contact-links">
+                {% if cv.personal_info.phone %}
+                <a href="tel:{{ cv.personal_info.phone }}">📞 {{ cv.personal_info.phone }}</a>
+                {% endif %}
+                
+                {% if cv.personal_info.linkedin %}
+                <a href="{% if not 'http' in cv.personal_info.linkedin %}https://{% endif %}{{ cv.personal_info.linkedin }}" target="_blank">🔗 LinkedIn</a>
+                {% endif %}
+                
+                {% if cv.personal_info.email %}
+                <a href="mailto:{{ cv.personal_info.email }}">✉️ {{ cv.personal_info.email }}</a>
+                {% else %}
+                <a href="mailto:usuario@example.com">✉️ Contactar</a>
+                {% endif %}
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 1rem;">
+                © 2026 Creado con Portfolio Creator por Daniel Martín Hurtado.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Modal Element -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close-btn">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+</body>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById('project-modal');
+    const modalBody = document.getElementById('modal-body');
+    const closeBtn = document.getElementById('modal-close-btn');
+
+    // Cerrar Modal
+    function closeModal() {
+        modal.classList.remove('active');
+        setTimeout(() => { modal.style.display = 'none'; }, 300);
+        document.body.style.overflow = 'auto';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
+    });
+
+    document.querySelectorAll('.project-card').forEach(card => {
+        // Detectar si el contenido es más alto que la altura fija
+        if (card.scrollHeight > card.clientHeight) {
+            card.classList.add('expandable');
+        }
+        
+        card.addEventListener('click', function(e) {
+            // Ignorar clics directos en los enlaces para que funcionen normal
+            if(e.target.tagName.toLowerCase() === 'a') return;
+            
+            if(this.classList.contains('expandable')) {
+                // Clonar el contenido interno de la tarjeta al modal
+                modalBody.innerHTML = this.innerHTML;
+                
+                // Mostrar Modal con animación
+                modal.style.display = 'flex';
+                
+                // Hacer reset del scroll de la ventana del modal (Debe ser después de display: flex para que funcione)
+                modal.querySelector('.modal-content').scrollTop = 0;
+                // Pequeño timeout para que la transición CSS funcione correctamente
+                setTimeout(() => { modal.classList.add('active'); }, 10);
+                
+                // Evitar scroll de la página de fondo
+                document.body.style.overflow = 'hidden';
+            }
+        });
+    });
+});
+</script>
+</html>

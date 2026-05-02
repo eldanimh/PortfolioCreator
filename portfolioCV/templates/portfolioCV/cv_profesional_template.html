@@ -100,7 +100,6 @@
         /* Proyectos / Experiencia */
         .project-card {
             margin-bottom: 20px;
-            page-break-inside: avoid;
         }
         
         .project-header {
@@ -144,6 +143,32 @@
             color: var(--text-main);
             margin: 5px 0 0 0;
         }
+        
+        pre {
+            background-color: var(--bg-muted);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: hidden;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid var(--border);
+            font-family: monospace;
+            font-size: 8.5pt;
+        }
+        
+        code {
+            font-family: monospace;
+            background-color: var(--bg-muted);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 9pt;
+        }
+        
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: inherit;
+        }
 
     </style>
 </head>
@@ -156,13 +181,16 @@
             {% endif %}
             
             <div class="header-info">
-                <h1>{{ user.username|title }}</h1>
+                <h1>{{ cv.personal_info.name|default:user.username|title }}</h1>
                 <div class="contact-info">
                     {% if cv.personal_info.phone %}
                     <span>📞 {{ cv.personal_info.phone }}</span>
                     {% endif %}
+                    {% if cv.personal_info.email %}
+                    <span>✉️ {{ cv.personal_info.email }}</span>
+                    {% endif %}
                     {% if cv.personal_info.linkedin %}
-                    <span>🔗 <a href="{{ cv.personal_info.linkedin }}" target="_blank">{{ cv.personal_info.linkedin }}</a></span>
+                    <span>🔗 <a href="{% if not 'http' in cv.personal_info.linkedin %}https://{% endif %}{{ cv.personal_info.linkedin }}" target="_blank">{{ cv.personal_info.linkedin }}</a></span>
                     {% endif %}
                     <span>👤 Plataforma Portfolio Creator</span>
                 </div>
@@ -194,7 +222,7 @@
                     </div>
                     
                     <div class="project-meta">
-                        <span class="badge" style="background: {% if item.platform == 'GitHub' %}#24292f; color: white;{% elif item.platform == 'OpenAlex' %}#f39c12; color: white;{% else %}#fc6d26; color: white;{% endif %} border: none;">
+                        <span class="badge" style="background: {% if item.platform == 'GitHub' %}#24292f; color: white;{% elif item.platform == 'OpenAlex' %}#f39c12; color: white;{% elif item.platform == 'IA Summary' %}#2ea043; color: white;{% else %}#fc6d26; color: white;{% endif %} border: none;">
                             {{ item.platform }}
                         </span>
                         {% if item.language %}
@@ -205,6 +233,12 @@
                     
                     {% if item.description %}
                     <p class="project-desc">{{ item.description }}</p>
+                    {% endif %}
+                    
+                    {% if item.content_html %}
+                    <div class="project-desc" style="background: #f6f8fa; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid var(--border);">
+                        {{ item.content_html|safe }}
+                    </div>
                     {% endif %}
                 </div>
                 {% endfor %}
