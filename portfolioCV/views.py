@@ -869,10 +869,10 @@ def stream_resumen_gemini(request):
             return
 
         prompts_map = {
-            'extenso': "Genera un CV/portfolio EXTENSO y detallado en español a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura (DEBES incluir obligatoriamente el árbol de directorios con los archivos ordenados), Competencias demostradas y Conclusiones. Sé completo y profesional.",
-            'una_pagina': "Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA en español. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
-            'tecnologia': "Genera un análisis TECNOLÓGICO detallado en español. Céntrate exclusivamente en: Stack técnico, Frameworks, Librerías, Herramientas de desarrollo, Arquitectura, y Buenas prácticas observadas.",
-            'tfg': "Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico en español. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
+            'extenso': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un CV/portfolio EXTENSO y detallado a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura (DEBES incluir obligatoriamente el árbol de directorios con los archivos ordenados), Competencias demostradas y Conclusiones. Sé completo y profesional.",
+            'una_pagina': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
+            'tecnologia': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un análisis TECNOLÓGICO detallado. Céntrate exclusivamente en: Stack técnico, Frameworks, Librerías, Herramientas de desarrollo, Arquitectura, y Buenas prácticas observadas.",
+            'tfg': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
         }
         prompt = prompts_map.get(cv_type, prompts_map['extenso'])
         prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
