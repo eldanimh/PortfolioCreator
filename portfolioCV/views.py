@@ -766,7 +766,7 @@ def generar_resumen_gemini(request):
     item_id = request.POST.get('id', '')
     cv_type = request.POST.get('cv_type', 'extenso')
     item_name = request.POST.get('name', 'Proyecto')
-    llm_model = request.POST.get('llm_model', 'gemini-2.5-pro')
+    llm_model = request.POST.get('llm_model', 'nvidia-gemma')
 
 
     cv_type_labels = {'extenso': 'CV Extenso', 'una_pagina': 'CV de Una Página', 'tecnologia': 'CV de Tecnología', 'tfg': 'CV de TFG'}
@@ -796,7 +796,7 @@ def stream_resumen_gemini(request):
     item_id = request.POST.get('id', '')
     cv_type = request.POST.get('cv_type', 'extenso')
     item_name = request.POST.get('name', 'Proyecto')
-    llm_model = request.POST.get('llm_model', 'gemini-2.5-pro')
+    llm_model = request.POST.get('llm_model', 'nvidia-gemma')
 
     def event_stream():
         # Recopilar contenido del repo/obra
@@ -894,16 +894,28 @@ def stream_resumen_gemini(request):
                 else:
                     yield f"\n\nError de LM Studio ({resp.status_code}): {resp.text}"
             else:
-                from google import genai
-                if not profile.gemini_api_key:
-                    yield "Error: Configura tu API Key de Gemini en los tokens."
+                from openai import OpenAI
+                if not profile.nvidia_api_key:
+                    yield "Error: Configura tu API Key de NVIDIA en los tokens."
                     return
-                client = genai.Client(api_key=profile.gemini_api_key)
-                response = client.models.generate_content_stream(
-                    model=llm_model, contents=prompt
+                
+                client = OpenAI(
+                  base_url="https://integrate.api.nvidia.com/v1",
+                  api_key=profile.nvidia_api_key
                 )
+                
+                response = client.chat.completions.create(
+                  model="google/gemma-2-2b-it",
+                  messages=[{"role":"user", "content": prompt}],
+                  temperature=0.2,
+                  top_p=0.7,
+                  max_tokens=2048,
+                  stream=True
+                )
+                
                 for chunk in response:
-                    yield chunk.text
+                    if chunk.choices and chunk.choices[0].delta.content is not None:
+                        yield chunk.choices[0].delta.content
         except Exception as e:
             yield f"\n\nError al generar resumen con IA: {str(e)}"
 

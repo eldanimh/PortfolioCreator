@@ -14,6 +14,32 @@
 * Nueva Funcionalidad 1/05/2026: que cada vez que una IA haga cualquier tipo de interaccion te permita extraerlo en pdf o añadirlo al cv profesional que se está creando en la misma pagina con el boton de agregar que está en la lista de repositorios.
 * nueva funcionalidad: que cuando de a descargar el CV me deje tambien la opcion de que se descargue en plantilla HTML o en pdf
   * para el CV al subir la foto que me deje acceder al buscador de archivos y se guarde en la base de datos de sqlite y con los otros campos de datos (telefono y linkedin), que la plantilla HTML que generes sea prácticamente completa para subir a una web con tan solo editar algun dato en los campos de la web. que tenga estilo minimalista y moderno. De un igeniero y desarrollador que sirva como portfolio.
+* Funcionalidad FINAL, exterior:
+  * quiero eliminar la IA de Google Gemini, y poner google/gemma-2-2b-it, desde nvidia: https://build.nvidia.com/
+  * que vaya con una API al solicitar, las IAS disponibles será Gemma a traves de nvidia o la local como ya está hecho, para nvidia este es el mecanismo del código:
+```
+from openai import OpenAI
+
+client = OpenAI(
+  base_url = "https://integrate.api.nvidia.com/v1",
+  api_key = "$NVIDIA_API_KEY"
+)
+
+completion = client.chat.completions.create(
+  model="google/gemma-2-2b-it",
+  messages=[{"role":"user","content":""}],
+  temperature=0.2,
+  top_p=0.7,
+  max_tokens=1024,
+  stream=True
+)
+
+for chunk in completion:
+  if chunk.choices and chunk.choices[0].delta.content is not None:
+    print(chunk.choices[0].delta.content, end="")
+
+```
+* guarda en SQLite la base de datos como NVIDIA KEY
 
 ## Requisitos NO funcionales
 * Usa los templates de DJANGO los comandos de creacion web con DJANGO que DJANGO haga el trabajo sucio de HTML

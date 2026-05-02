@@ -17,12 +17,12 @@ class TokensForm(forms.ModelForm):
     """Formulario para configurar los tokens de GitHub y GitLab"""
     class Meta:
         model = UserProfile
-        fields = ['github_token', 'gitlab_token', 'openalex_token', 'gemini_api_key', 'github_username', 'gitlab_username', 'lm_studio_url']
+        fields = ['github_token', 'gitlab_token', 'openalex_token', 'nvidia_api_key', 'github_username', 'gitlab_username', 'lm_studio_url']
         widgets = {
             'github_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitHub'}),
             'gitlab_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitLab URJC'}),
             'openalex_token': forms.PasswordInput(attrs={'placeholder': 'API Key de OpenAlex (Opcional)'}),
-            'gemini_api_key': forms.PasswordInput(attrs={'placeholder': 'API Key de Gemini'}),
+            'nvidia_api_key': forms.PasswordInput(attrs={'placeholder': 'API Key de NVIDIA'}),
             'github_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitHub'}),
             'gitlab_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitLab URJC'}),
             'lm_studio_url': forms.URLInput(attrs={'placeholder': 'http://127.0.0.1:1234'}),
@@ -31,7 +31,7 @@ class TokensForm(forms.ModelForm):
             'github_token': 'GitHub Personal Access Token',
             'gitlab_token': 'GitLab URJC Personal Access Token',
             'openalex_token': 'OpenAlex API Key',
-            'gemini_api_key': 'Gemini API Key',
+            'nvidia_api_key': 'NVIDIA API Key',
             'github_username': 'Nombre de usuario en GitHub',
             'gitlab_username': 'Nombre de usuario en GitLab URJC',
             'lm_studio_url': 'URL de servidor LM Studio Local',
