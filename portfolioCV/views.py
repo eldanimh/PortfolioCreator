@@ -948,8 +948,15 @@ def stream_resumen_gemini(request):
 def _generar_pdf_completo(user, cv_data):
     """Generador subyacente de PDF para el CV Unificado usando Playwright"""
     from django.template.loader import render_to_string
-    import markdown
-    from playwright.sync_api import sync_playwright
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return HttpResponse(
+            "<h1>Generación de PDF no disponible</h1>"
+            "<p>La librería Playwright no está instalada en este entorno (probablemente por limitaciones de espacio en la nube).</p>"
+            "<p>Por favor, utiliza la opción <strong>Descargar HTML</strong> o ejecuta el proyecto en local.</p>",
+            status=501
+        )
 
     buffer = io.BytesIO()
     
@@ -966,20 +973,23 @@ def _generar_pdf_completo(user, cv_data):
     context = {'user': user, 'cv': cv_data}
     html_string = render_to_string('portfolioCV/cv_profesional_template.html', context)
     
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.set_content(html_string, wait_until='networkidle')
-        
-        header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'
-        footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
-        
-        pdf_bytes = page.pdf(
-            format="A4", print_background=True,
-            margin={'top': '25mm', 'bottom': '25mm', 'left': '15mm', 'right': '15mm'},
-            display_header_footer=True, header_template=header_html, footer_template=footer_html
-        )
-        browser.close()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.set_content(html_string, wait_until='networkidle')
+            
+            header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'
+            footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+            
+            pdf_bytes = page.pdf(
+                format="A4", print_background=True,
+                margin={'top': '25mm', 'bottom': '25mm', 'left': '15mm', 'right': '15mm'},
+                display_header_footer=True, header_template=header_html, footer_template=footer_html
+            )
+            browser.close()
+    except Exception as e:
+        return HttpResponse(f"<h1>Error al generar PDF</h1><p>{str(e)}</p>", status=500)
 
     buffer.write(pdf_bytes)
     buffer.seek(0)
