@@ -915,6 +915,7 @@ def stream_resumen_gemini(request):
                     return
                 
                 # Configuración específica para PythonAnywhere (Free Tier requiere proxy)
+                import httpx
                 if PA_PROXIES:
                     http_client = httpx.Client(proxy=PA_PROXIES["http"])
                 else:
