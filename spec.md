@@ -109,6 +109,8 @@ def github_repos(request):
   * será un CV profesional que cuando tengas en la lista todos los portfolios o documentos o github o gitlab o openalex que quieras agregar le des a un botón de generar cv y te descargue el cv con todo lo que has agregado
   * el cv debe estar bien ordenado y ser bonito y facil de leer
   * puedes añadir foto linkedin y numero de telefono tambien un about me
+  * funcionalidad, usa y crea los test.py de Django para probar todo el código generado. Buscando Fallos y bugs y corrigiendolos. Y volviendolo a probar hasta que no haya ningun bug. Y ejecuta siempre python manage.py test.
+
 
 ## Integración con OpenAlex API (Bibliografías)
 

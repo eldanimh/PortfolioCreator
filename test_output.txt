@@ -1,0 +1,215 @@
+Creating test database for alias 'default'...
+Found 15 test(s).
+/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+System check identified no issues (0 silenced).
+..EE.........FE
+======================================================================
+ERROR: test_github_repos_success (portfolioCV.tests.ExternalAPITests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1337, in patched
+    return func(*newargs, **newkeywargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/TrabajoFINAL-OK/final/portfolioCV/tests.py", line 105, in test_github_repos_success
+    response = self.client.get(reverse('github_repos'))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 930, in get
+    response = super().get(path, data=data, secure=secure, headers=headers, **extra)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 457, in get
+    return self.generic(
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 609, in generic
+    return self.request(**r)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 894, in request
+    self.check_exception(response)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 741, in check_exception
+    raise exc_value
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/contrib/auth/decorators.py", line 23, in _wrapper_view
+    return view_func(request, *args, **kwargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/TrabajoFINAL-OK/final/portfolioCV/views.py", line 189, in github_repos
+    return render(request, 'portfolioCV/github_repos.html', {
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/shortcuts.py", line 24, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/backends/django.py", line 61, in render
+    return self.template.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 175, in render
+    return self._render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/utils.py", line 112, in instrumented_test_render
+    return self.nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/loader_tags.py", line 157, in render
+    return compiled_parent._render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/utils.py", line 112, in instrumented_test_render
+    return self.nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/loader_tags.py", line 63, in render
+    result = block.nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 321, in render
+    return nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 238, in render
+    nodelist.append(node.render_annotated(context))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 321, in render
+    return nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 471, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/urls/base.py", line 88, in reverse
+    return resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/urls/resolvers.py", line 828, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'github_repo_detalle' with arguments '('', 'test-repo')' not found. 1 pattern(s) tried: ['github/(?P<owner>[^/]+)/(?P<repo_name>[^/]+)/\\Z']
+
+======================================================================
+ERROR: test_gitlab_repos_success (portfolioCV.tests.ExternalAPITests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1337, in patched
+    return func(*newargs, **newkeywargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/TrabajoFINAL-OK/final/portfolioCV/tests.py", line 118, in test_gitlab_repos_success
+    response = self.client.get(reverse('gitlab_repos'))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 930, in get
+    response = super().get(path, data=data, secure=secure, headers=headers, **extra)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 457, in get
+    return self.generic(
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 609, in generic
+    return self.request(**r)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 894, in request
+    self.check_exception(response)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/client.py", line 741, in check_exception
+    raise exc_value
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/contrib/auth/decorators.py", line 23, in _wrapper_view
+    return view_func(request, *args, **kwargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/TrabajoFINAL-OK/final/portfolioCV/views.py", line 151, in gitlab_repos
+    return render(request, 'portfolioCV/gitlab_repos.html', {
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/shortcuts.py", line 24, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/backends/django.py", line 61, in render
+    return self.template.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 175, in render
+    return self._render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/utils.py", line 112, in instrumented_test_render
+    return self.nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/loader_tags.py", line 157, in render
+    return compiled_parent._render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/utils.py", line 112, in instrumented_test_render
+    return self.nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/loader_tags.py", line 63, in render
+    result = block.nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 321, in render
+    return nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 238, in render
+    nodelist.append(node.render_annotated(context))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 321, in render
+    return nodelist.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 1005, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/base.py", line 966, in render_annotated
+    return self.render(context)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/template/defaulttags.py", line 471, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/urls/base.py", line 88, in reverse
+    return resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/urls/resolvers.py", line 828, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'gitlab_repo_detalle' with arguments '('',)' not found. 1 pattern(s) tried: ['gitlab/(?P<repo_id>[0-9]+)/\\Z']
+
+======================================================================
+ERROR: test_stream_resumen_gemini (portfolioCV.tests.TestCVBuilder)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1334, in patched
+    with self.decoration_helper(patched,
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.py", line 117, in __enter__
+    return next(self.gen)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1316, in decoration_helper
+    arg = exit_stack.enter_context(patching)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.py", line 429, in enter_context
+    result = _cm_type.__enter__(cm)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1405, in __enter__
+    original, local = self.get_original()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1378, in get_original
+    raise AttributeError(
+AttributeError: <module 'portfolioCV.views' from '/Users/eldanimh/URJC/Año5/2Q/LTAW/TrabajoFINAL-OK/final/portfolioCV/views.py'> does not have the attribute 'OpenAI'
+
+======================================================================
+FAIL: test_descargar_cv_html (portfolioCV.tests.TestCVBuilder)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/TrabajoFINAL-OK/final/portfolioCV/tests.py", line 172, in test_descargar_cv_html
+    self.assertContains(response, 'Repo 1')
+  File "/Users/eldanimh/URJC/Año5/2Q/LTAW/venv-django/lib/python3.9/site-packages/django/test/testcases.py", line 660, in assertContains
+    self.assertTrue(
+AssertionError: False is not true : Couldn't find 'Repo 1' in response
+
+----------------------------------------------------------------------
+Ran 15 tests in 2.852s
+
+FAILED (failures=1, errors=3)
+Destroying test database for alias 'default'...
