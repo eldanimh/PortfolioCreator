@@ -142,6 +142,84 @@ def github_repos(request):
     ...
 ```
 
+### Social Login — django-allauth (GitHub + Google)
+
+Además del login manual, se integró `django-allauth` para permitir inicio de sesión con un clic usando cuentas de GitHub o Google.
+
+#### Configuración en `settings.py`:
+```python
+INSTALLED_APPS = [
+    ...
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.google',
+]
+
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Middleware adicional
+MIDDLEWARE = [
+    ...
+    'allauth.account.middleware.AccountMiddleware',
+]
+
+# Configuración de allauth
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
+```
+
+#### URLs en `PortfolioGenerator/urls.py`:
+```python
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('accounts/', include('allauth.urls')),  # ← Callbacks OAuth
+    path('', include('portfolioCV.urls')),
+]
+```
+
+#### Botones en los templates (`login.html`):
+```html
+{% load socialaccount %}
+
+<a href="{% provider_login_url 'github' %}" class="btn-social btn-github">
+    Continuar con GitHub
+</a>
+<a href="{% provider_login_url 'google' %}" class="btn-social btn-google">
+    Continuar con Google
+</a>
+```
+
+#### Signal para crear UserProfile automáticamente:
+Cuando un usuario entra por social login, no pasa por `registro_view`, así que se usa un signal en `models.py`:
+```python
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=User)
+def crear_perfil_usuario(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
+```
+
+#### Configuración de credenciales OAuth:
+Las credenciales (Client ID + Secret) se configuran desde el **Admin Site** → **Social Applications**:
+1. Crear OAuth App en GitHub (Settings → Developer Settings → OAuth Apps)
+2. Crear OAuth Client en Google Cloud Console (APIs → Credentials)
+3. Registrar ambos en `/admin/` → Social Applications con el sitio correcto
+
+> **Nota:** Las callback URLs deben coincidir:
+> - GitHub: `https://eldanimh.pythonanywhere.com/accounts/github/login/callback/`
+> - Google: `https://eldanimh.pythonanywhere.com/accounts/google/login/callback/`
+
 ---
 
 ## 4. APIs Externas — GitHub, GitLab y OpenAlex
@@ -584,6 +662,7 @@ markdown
 openai          ← Cliente para NVIDIA Gemma-2 (protocolo OpenAI)
 playwright      ← Generación de PDF (solo local)
 httpx           ← Cliente HTTP para proxy de PythonAnywhere
+django-allauth  ← Login social con GitHub y Google
 ```
 
 ---
@@ -598,3 +677,5 @@ httpx           ← Cliente HTTP para proxy de PythonAnywhere
 - **Contraseñas**: Django las hashea automáticamente con PBKDF2
 - **Tokens ocultos**: Se muestran como `PasswordInput` (tipo `****`)
 - **`@login_required`**: Protege todas las rutas sensibles
+- **OAuth Social Login**: Las credenciales OAuth (Client ID/Secret) se almacenan en la base de datos a través del Admin Site, nunca en el código fuente
+- **Login con validación**: Mensajes de error diferenciados en español (usuario no existe, contraseña incorrecta, contraseña débil)
