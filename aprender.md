@@ -1,37 +1,53 @@
-# Aprender: Integración de Gemini AI en Django
+# Aprender: Portfolio Creator — Guía Técnica Completa
 
-Guía paso a paso de cómo se integró la API de Google Gemini en la aplicación **Portfolio Creator** (Django).
-
----
-
-## 1. Instalación de la librería
-
-Lo primero es instalar el paquete oficial de Google para Gemini:
-
-```bash
-pip install google-genai
-```
-
-También se añadió a `requirements.txt` para que cualquiera pueda reproducir el entorno:
-
-```
-Django
-requests
-xhtml2pdf
-social-auth-app-django
-markdown
-google-genai          ← NUEVO
-```
+Guía paso a paso de cómo se construyó **Portfolio Creator**, una aplicación Django que integra APIs externas (GitHub, GitLab, OpenAlex) e Inteligencia Artificial (NVIDIA Gemma-2) para generar portfolios y CVs profesionales.
 
 ---
 
-## 2. Guardar la API Key del usuario — `models.py`
+## 1. Arquitectura del Proyecto
 
-Cada usuario necesita su propia API Key de Gemini. Para guardarla, se añadió un campo al modelo `UserProfile`:
+```
+final/
+├── manage.py                  ← Punto de entrada de Django
+├── requirements.txt           ← Dependencias del proyecto
+├── db.sqlite3                 ← Base de datos SQLite
+├── PortfolioGenerator/        ← Configuración del proyecto Django
+│   ├── settings.py            ← Configuración global
+│   ├── urls.py                ← Rutas raíz
+│   └── wsgi.py                ← Servidor WSGI (producción)
+└── portfolioCV/               ← App principal
+    ├── models.py              ← Modelos de datos (tablas)
+    ├── views.py               ← Lógica de negocio (vistas)
+    ├── urls.py                ← Rutas de la app
+    ├── forms.py               ← Formularios Django
+    ├── admin.py               ← Registro en Admin Site
+    ├── tests.py               ← Tests unitarios
+    ├── templates/portfolioCV/ ← Plantillas HTML (16 archivos)
+    │   ├── base.html          ← Plantilla padre (herencia)
+    │   ├── index.html         ← Página principal
+    │   ├── login.html         ← Inicio de sesión
+    │   ├── registro.html      ← Registro de usuario
+    │   ├── tokens.html        ← Configuración de tokens
+    │   ├── gitlab_repos.html  ← Lista repos GitLab
+    │   ├── github_repos.html  ← Lista repos GitHub
+    │   ├── openalex_repos.html← Lista publicaciones
+    │   ├── repo_detalle.html  ← Detalle de un repo
+    │   ├── gemini_resumen.html← Streaming IA en vivo
+    │   ├── cv_builder.html    ← Constructor de CV
+    │   └── cv_profesional_template.html ← Plantilla PDF
+    └── static/portfolioCV/
+        ├── css/style.css      ← Estilos CSS (responsive)
+        └── img/logo.svg       ← Favicon
+```
+
+---
+
+## 2. Modelos de Datos — `models.py`
+
+### Tabla 1: `UserProfile`
+Extiende el modelo `User` nativo de Django con una relación One-to-One:
 
 ```python
-# portfolioCV/models.py
-
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     github_token = models.CharField(max_length=255, blank=True, default='')
@@ -39,482 +55,546 @@ class UserProfile(models.Model):
     github_username = models.CharField(max_length=150, blank=True, default='')
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     openalex_token = models.CharField(max_length=255, blank=True, default='')
-    gemini_api_key = models.CharField(max_length=255, blank=True, default='')  # ← NUEVO
+    nvidia_api_key = models.CharField(max_length=255, blank=True, default='')
+    lm_studio_url = models.CharField(max_length=255, blank=True, default='')
 ```
 
-### ¿Qué es esto?
-- `CharField(max_length=255)` → un campo de texto con máximo 255 caracteres
-- `blank=True, default=''` → es opcional, si no lo rellenas queda vacío
-- Después de añadir el campo, hay que crear y aplicar la migración:
+- `OneToOneField` → cada usuario tiene exactamente un perfil
+- `on_delete=CASCADE` → si se borra el usuario, se borra su perfil
+- Todos los campos son opcionales (`blank=True, default=''`)
 
+### Tabla 2: `ContenidoData`
+Almacena los recursos y CVs generados en formato JSON:
+
+```python
+class ContenidoData(models.Model):
+    recurso = models.CharField(max_length=255, unique=True)
+    contenido = models.TextField(blank=True, default='')   # JSON del CV
+    usuario = models.CharField(max_length=255, blank=True, default='')
+    plataforma = models.CharField(max_length=100, blank=True, default='')
+    url_repo = models.URLField(max_length=500, blank=True, default='')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+```
+
+- `unique=True` en recurso → no se pueden crear dos con el mismo nombre
+- `auto_now_add=True` → fecha automática al crear el registro
+
+### Migraciones
+Cada vez que se modifica un modelo:
 ```bash
 python3 manage.py makemigrations portfolioCV
 python3 manage.py migrate
 ```
 
-Esto genera un archivo en `portfolioCV/migrations/` que modifica la tabla en SQLite3 para añadir la nueva columna.
-
 ---
 
-## 3. Formulario para introducir la clave — `forms.py`
+## 3. Autenticación — Login, Registro y Sesiones
 
-Para que el usuario pueda escribir su API Key desde la web, se añadió al formulario `TokensForm`:
+### Registro (`registro_view`)
+Usa `UserCreationForm` de Django con email obligatorio:
 
 ```python
-# portfolioCV/forms.py
-
-class TokensForm(forms.ModelForm):
-    class Meta:
-        model = UserProfile
-        fields = [
-            'github_token', 'gitlab_token', 'openalex_token',
-            'gemini_api_key',        # ← NUEVO
-            'github_username', 'gitlab_username'
-        ]
-        widgets = {
-            # ... los demás widgets ...
-            'gemini_api_key': forms.PasswordInput(attrs={
-                'placeholder': 'API Key de Gemini'
-            }),
-        }
-        labels = {
-            # ... los demás labels ...
-            'gemini_api_key': 'Gemini API Key',
-        }
+def registro_view(request):
+    if request.method == 'POST':
+        form = RegistroForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            UserProfile.objects.create(user=user)
+            login(request, user)
+            return redirect('configurar_tokens')
+        else:
+            # Errores específicos en español
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if 'already exists' in error:
+                        messages.error(request, 'Ese usuario ya existe.')
+                    elif 'too short' in error:
+                        messages.error(request, 'Contraseña muy corta (mín. 8 caracteres).')
 ```
 
-### ¿Por qué `PasswordInput`?
-- Para que el campo se muestre como `****` en el navegador (tipo contraseña)
-- La API Key es un secreto, no debe verse en pantalla
-
----
-
-## 4. Tarjeta de ayuda en la página de Tokens — `tokens.html`
-
-Se añadió una tarjeta informativa para que el usuario sepa cómo obtener su clave:
-
-```html
-<!-- portfolioCV/templates/portfolioCV/tokens.html -->
-<div class="help-card">
-    <h3>🤖 Gemini AI</h3>
-    <p>Ve a <strong>aistudio.google.com/apikey</strong> → Create API Key</p>
-    <p>Modelo: <code>gemini-2.5-pro</code></p>
-</div>
-```
-
-El formulario ya existente (que recorre los campos con `{% for field in form %}`) muestra automáticamente el nuevo campo `gemini_api_key`.
-
----
-
-## 5. La URL — `urls.py`
-
-Se registró una nueva ruta para la vista de Gemini:
+### Login (`login_view`)
+Autenticación manual con mensajes de error diferenciados:
 
 ```python
-# portfolioCV/urls.py
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username', '')
+        password = request.POST.get('password', '')
 
-urlpatterns = [
-    # ... todas las URLs anteriores ...
+        user_exists = User.objects.filter(username=username).exists()
 
-    # Gemini AI
-    path('gemini/resumen/', views.generar_resumen_gemini, name='generar_resumen_gemini'),
-
-    # ... recursos genéricos al final ...
-]
+        if not user_exists:
+            messages.error(request, 'No existe ese usuario. ¿Quieres registrarte?')
+        else:
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('index')
+            else:
+                messages.error(request, 'Contraseña incorrecta.')
 ```
 
-### ¿Cómo funciona?
-- Cuando el usuario envía un formulario POST a `/gemini/resumen/`, Django ejecuta la función `generar_resumen_gemini`
-- El `name='generar_resumen_gemini'` permite referenciarla en templates con `{% url 'generar_resumen_gemini' %}`
-
----
-
-## 6. La vista principal — `views.py`
-
-Esta es la parte más importante. La función `generar_resumen_gemini` hace todo el trabajo:
-
-### 6.1. Verificaciones iniciales
-
+### Protección de rutas
+Se usa el decorador `@login_required` en todas las vistas que requieren autenticación:
 ```python
 @login_required
-def generar_resumen_gemini(request):
-    if request.method != 'POST':
-        return redirect('index')
-
-    profile = get_object_or_404(UserProfile, user=request.user)
-    if not profile.gemini_api_key:
-        messages.warning(request, 'Configura tu API Key de Gemini primero.')
-        return redirect('configurar_tokens')
+def github_repos(request):
+    ...
 ```
 
-- `@login_required` → solo usuarios autenticados
-- Solo acepta `POST` (no se puede acceder por URL directamente)
-- Comprueba que el usuario tenga configurada su API Key
+---
 
-### 6.2. Recoger los datos del formulario
+## 4. APIs Externas — GitHub, GitLab y OpenAlex
 
+### 4.1 GitHub API
 ```python
-    platform = request.POST.get('platform', '')      # GitHub, GitLab URJC, OpenAlex
-    item_id = request.POST.get('id', '')              # ID del repo/obra
-    cv_type = request.POST.get('cv_type', 'extenso')  # extenso, una_pagina, tecnologia, tfg
-    item_name = request.POST.get('name', 'Proyecto')   # Nombre del proyecto
-```
+GITHUB_API_URL = "https://api.github.com"
 
-Estos datos vienen del formulario HTML que está en `repo_detalle.html`.
-
-### 6.3. Recopilar contenido del repositorio/obra
-
-Según la plataforma, se llama a la API correspondiente para obtener el contenido:
-
-**Para GitHub:**
-```python
-if platform == 'GitHub':
-    # 1. Obtener info del repo (descripción, lenguaje, URL)
-    headers = {"Authorization": f"Bearer {profile.github_token}", ...}
-    resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers)
-    
-    # 2. Obtener el README en texto plano
-    resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw)
-    contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
-```
-
-**Para GitLab URJC:**
-```python
-elif platform == 'GitLab URJC':
-    headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-    resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers)
-    # Obtener README
-    resp_r = requests.get(
-        f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw",
-        headers=headers, params={"ref": default_branch}
-    )
-```
-
-**Para OpenAlex:**
-```python
-elif platform == 'OpenAlex':
-    resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params)
-    # Reconstruir el abstract desde el "inverted index"
-    abs_idx = wdata.get('abstract_inverted_index')
-    if abs_idx:
-        words = {}
-        for word, pos_list in abs_idx.items():
-            for pos in pos_list:
-                words[pos] = word
-        abstract = " ".join([words[p] for p in sorted(words.keys())])
-```
-
-> **Nota sobre OpenAlex:** El abstract viene como un "inverted index" (diccionario donde cada palabra mapea a sus posiciones). Hay que reconstruir el texto ordenando por posición.
-
-### 6.4. Construir el prompt según el tipo de CV
-
-Cada tipo de CV tiene un prompt diferente que le dice a Gemini cómo generar el resumen:
-
-```python
-prompts_map = {
-    'extenso': "Genera un CV/portfolio EXTENSO y detallado en español...",
-    'una_pagina': "Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA...",
-    'tecnologia': "Genera un análisis TECNOLÓGICO detallado en español...",
-    'tfg': "Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG)...",
+headers = {
+    "Authorization": f"Bearer {profile.github_token}",
+    "Accept": "application/vnd.github.v3+json"
 }
-prompt = prompts_map.get(cv_type, prompts_map['extenso'])
-prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
+response = requests.get(f"{GITHUB_API_URL}/user/repos", headers=headers,
+                        params={"per_page": 50}, timeout=10, proxies=PA_PROXIES)
+repos = response.json()
 ```
 
-### ¿Qué es un prompt?
-Es la instrucción de texto que le das al modelo de IA. Cuanto más específico sea, mejor será la respuesta. Aquí le damos:
-1. **Instrucciones** → qué formato queremos (extenso, corto, técnico, académico)
-2. **Contexto** → el contenido real del proyecto (descripción, README, lenguajes, etc.)
+- Autenticación: `Bearer Token` en cabecera `Authorization`
+- Endpoints usados: `/user/repos`, `/repos/{owner}/{name}`, `/repos/.../readme`, `/repos/.../languages`, `/repos/.../git/trees/`
 
-### 6.5. Llamar a la API de Gemini
+### 4.2 GitLab URJC API
+```python
+GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"
+
+headers = {"PRIVATE-TOKEN": profile.gitlab_token}
+response = requests.get(f"{GITLAB_URJC_URL}/projects", headers=headers,
+                        params={"owned": True, "per_page": 50}, timeout=10)
+```
+
+- Autenticación: `PRIVATE-TOKEN` en cabecera (formato GitLab)
+- Endpoints: `/projects`, `/projects/{id}`, `/projects/{id}/languages`, `/projects/{id}/repository/tree`, `/projects/{id}/repository/files/README.md/raw`
+
+### 4.3 OpenAlex API
+```python
+url = "https://api.openalex.org/works"
+params = {"search": query, "per_page": 15}
+response = requests.get(url, params=params, timeout=10)
+```
+
+- Sin autenticación obligatoria (API abierta)
+- Particularidad: el abstract viene como "inverted index":
 
 ```python
-from google import genai
-
-client = genai.Client(api_key=profile.gemini_api_key)
-
-modelos = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
-for modelo in modelos:
-    for intento in range(2):  # 2 intentos por modelo
-        try:
-            response = client.models.generate_content(
-                model=modelo, contents=prompt
-            )
-            resumen_texto = response.text
-            break
-        except Exception as model_err:
-            err_str = str(model_err)
-            if "RESOURCE_EXHAUSTED" in err_str or "not found" in err_str.lower():
-                break    # cuota agotada → siguiente modelo
-            if "UNAVAILABLE" in err_str and intento == 0:
-                time.sleep(3)  # servidor saturado → esperar 3s y reintentar
-                continue
-            raise model_err
-    if resumen_texto:
-        break
+# Reconstruir abstract desde inverted index
+abs_idx = wdata.get('abstract_inverted_index')
+if abs_idx:
+    words = {}
+    for word, pos_list in abs_idx.items():
+        for pos in pos_list:
+            words[pos] = word
+    abstract = " ".join([words[p] for p in sorted(words.keys())])
 ```
 
-### ¿Cómo funciona el sistema de fallback?
+### 4.4 Proxy para PythonAnywhere
+Las cuentas gratuitas requieren proxy para acceso a internet:
+```python
+import os
+PA_PROXIES = {
+    "http": "http://proxy.server:3128",
+    "https": "http://proxy.server:3128"
+} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
+```
+Se pasa como `proxies=PA_PROXIES` a todas las llamadas `requests.get/post`.
+
+---
+
+## 5. Inteligencia Artificial — NVIDIA Gemma-2 en Streaming
+
+### 5.1 Arquitectura del streaming
 
 ```
-gemini-2.5-pro  ──→ ¿Funciona? → SÍ → Usar respuesta ✅
-       │                           
-       └─→ NO (cuota/error) → gemini-2.5-flash ──→ ¿Funciona? → SÍ → ✅
-                                      │
-                                      └─→ NO → gemini-2.0-flash ──→ ¿Funciona? → SÍ → ✅
-                                                     │
-                                                     └─→ NO → Mostrar error ❌
+┌──────────┐    POST     ┌──────────────┐   render   ┌──────────────────┐
+│ Detalle  │ ──────────→ │ generar_     │ ────────→  │ gemini_          │
+│ del repo │  (platform, │ resumen_     │            │ resumen.html     │
+│          │   id, type)  │ gemini()     │            │ (página vacía)   │
+└──────────┘              └──────────────┘            └───────┬──────────┘
+                                                              │ fetch()
+                                                              ▼
+                                                     ┌──────────────────┐
+                                                     │ stream_resumen_  │
+                                                     │ gemini()         │
+                                                     │                  │
+                                                     │ yield chunk      │
+                                                     │ yield chunk      │
+                                                     │ yield chunk...   │
+                                                     └──────────────────┘
 ```
 
-Para cada modelo, si devuelve **503 UNAVAILABLE** (servidor saturado), espera 3 segundos y reintenta UNA vez ese mismo modelo antes de pasar al siguiente.
+1. El usuario pulsa "Generar" → POST a `generar_resumen_gemini`
+2. La vista renderiza `gemini_resumen.html` (página con un `<div>` vacío)
+3. JavaScript hace un `fetch()` a `stream_resumen_gemini`
+4. El servidor responde con `StreamingHttpResponse` (texto en chunks)
+5. El frontend va pintando cada chunk con `marked.js` (Markdown → HTML)
 
-### 6.6. Convertir Markdown a HTML
-
-Gemini devuelve texto en formato Markdown. Lo convertimos a HTML para mostrarlo bonito:
+### 5.2 Vista de streaming (`stream_resumen_gemini`)
 
 ```python
-import markdown
+from django.http import StreamingHttpResponse
 
-resumen_html = markdown.markdown(
-    resumen_texto, 
-    extensions=['extra', 'codehilite', 'tables', 'fenced_code']
-)
+@login_required
+def stream_resumen_gemini(request):
+    def event_stream():
+        # 1. Recopilar contenido del repo vía API
+        contenido_texto = f"Proyecto: {item_name}\nPlataforma: {platform}\n"
+        # ... llamadas a GitHub/GitLab/OpenAlex ...
+
+        # 2. Construir prompt
+        prompt = "RESPONDE SIEMPRE EN ESPAÑOL. Genera un CV extenso..."
+        prompt += f"\n\nContenido:\n{contenido_texto}"
+
+        # 3. Llamar a NVIDIA con streaming
+        from openai import OpenAI
+        import httpx
+
+        if PA_PROXIES:
+            http_client = httpx.Client(proxy=PA_PROXIES["http"])
+        else:
+            http_client = httpx.Client()
+
+        client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=profile.nvidia_api_key,
+            http_client=http_client
+        )
+
+        response = client.chat.completions.create(
+            model="google/gemma-2-2b-it",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2, top_p=0.7, max_tokens=2048,
+            stream=True   # ← Clave: activar streaming
+        )
+
+        # 4. Yield cada chunk de texto
+        for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
+    return StreamingHttpResponse(event_stream(), content_type='text/plain; charset=utf-8')
 ```
 
-Las extensiones permiten renderizar:
-- `extra` → abreviaciones, footnotes, etc.
-- `codehilite` → resaltado de código
-- `tables` → tablas markdown
-- `fenced_code` → bloques de código con \`\`\`
+### 5.3 Frontend: recibir streaming con JavaScript
 
-### 6.7. Renderizar el template
+```javascript
+// gemini_resumen.html
+fetch("/gemini/stream/", { method: 'POST', body: formData })
+.then(async response => {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let fullText = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, {stream: true});
+        fullText += chunk;
+
+        // Convertir Markdown acumulado a HTML en tiempo real
+        contentDiv.innerHTML = marked.parse(fullText);
+    }
+});
+```
+
+### 5.4 Soporte para LM Studio (modelo local)
+Alternativa para usar modelos en tu propio PC:
 
 ```python
-return render(request, 'portfolioCV/gemini_resumen.html', {
-    'resumen_html': resumen_html,
-    'resumen_texto': resumen_texto,
-    'error_msg': error_msg,
-    'platform': platform,
-    'item_id': item_id,
-    'item_name': item_name,
-    'cv_type': cv_type,
-    'cv_type_label': cv_type_labels.get(cv_type, cv_type),
-})
+if llm_model == 'local':
+    url = f"{profile.lm_studio_url}/v1/chat/completions"
+    payload = {
+        "model": "qwen2.5-7b-instruct",
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": True
+    }
+    resp = requests.post(url, json=payload, stream=True, timeout=180)
+    for line in resp.iter_lines():
+        if line.startswith(b'data: '):
+            data_json = json.loads(line[6:])
+            chunk = data_json['choices'][0]['delta'].get('content', '')
+            if chunk:
+                yield chunk
 ```
 
 ---
 
-## 7. El formulario del selector — `repo_detalle.html`
+## 6. Constructor de CV — Sistema de "Cesta"
 
-En la página de detalle de cada repo, se añadió una sección con 4 radio buttons estilizados:
+### 6.1 Almacenamiento en JSON
+El CV se guarda como un JSON dentro de `ContenidoData.contenido`:
 
+```python
+# Estructura del JSON
+{
+    "personal_info": {
+        "name": "Daniel Martín",
+        "email": "d.martin@...",
+        "phone": "+34 600...",
+        "linkedin": "linkedin.com/in/...",
+        "about": "Ingeniero de software...",
+        "photo": "data:image/jpeg;base64,..."  # foto en Base64
+    },
+    "items": [
+        {"name": "Repo1", "platform": "GitHub", "id": "user/repo"},
+        {"name": "Paper1", "platform": "OpenAlex", "id": "W12345"},
+        {"name": "Resumen IA", "platform": "IA Summary", "content": "..."}
+    ]
+}
+```
+
+### 6.2 Añadir al CV (`agregar_al_cv`)
+```python
+@login_required
+def agregar_al_cv(request):
+    contenido, _ = ContenidoData.objects.get_or_create(
+        recurso=f"cv_profesional_{request.user.username}",
+        defaults={'usuario': request.user.username}
+    )
+    data = json.loads(contenido.contenido) if contenido.contenido else {...}
+    data['items'].append({
+        'name': request.POST.get('name'),
+        'platform': request.POST.get('platform'),
+        'id': request.POST.get('id')
+    })
+    contenido.contenido = json.dumps(data)
+    contenido.save()
+```
+
+### 6.3 Exportación PDF (Playwright)
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page()
+    page.set_content(html_string, wait_until='networkidle')
+    pdf_bytes = page.pdf(format="A4", print_background=True,
+                         margin={'top': '25mm', 'bottom': '25mm'})
+    browser.close()
+```
+
+> **Nota:** Playwright no funciona en PythonAnywhere (Free Tier) por falta de espacio. Se usa un `try/except ImportError` para mostrar un mensaje amigable.
+
+### 6.4 Exportación HTML
+```python
+if request.GET.get('format') == 'html':
+    html_string = render_to_string('portfolioCV/cv_web_portfolio_template.html', context)
+    response = HttpResponse(html_string, content_type='text/html')
+    response['Content-Disposition'] = 'attachment; filename="cv_profesional.html"'
+    return response
+```
+
+---
+
+## 7. Plantillas Django — Herencia
+
+```
+base.html (padre)
+├── index.html
+├── login.html
+├── registro.html
+├── tokens.html
+├── gitlab_repos.html
+├── github_repos.html
+├── openalex_repos.html
+├── repo_detalle.html
+├── gemini_resumen.html
+├── cv_builder.html
+└── detalle.html
+```
+
+### base.html (plantilla padre)
 ```html
-<div class="detail-card gemini-section">
-    <h2>🤖 Resumen con Inteligencia Artificial</h2>
-    
-    <form method="post" action="{% url 'generar_resumen_gemini' %}">
-        {% csrf_token %}
-        
-        <!-- Datos ocultos del repo -->
-        <input type="hidden" name="platform" value="GitHub">
-        <input type="hidden" name="id" value="{{ owner }}/{{ repo_name }}">
-        <input type="hidden" name="name" value="{{ repo.name }}">
-
-        <!-- Selector de tipo de CV -->
-        <div class="cv-type-selector">
-            <label class="cv-type-option">
-                <input type="radio" name="cv_type" value="extenso" checked>
-                <span class="cv-type-card">
-                    <span class="cv-type-icon">📝</span>
-                    <span class="cv-type-label">CV Extenso</span>
-                    <span class="cv-type-desc">Detallado y completo</span>
-                </span>
-            </label>
-            <!-- ... más opciones (una_pagina, tecnologia, tfg) ... -->
-        </div>
-
-        <button type="submit">🤖 Generar Resumen con Gemini AI</button>
-    </form>
-</div>
+{% load static %}
+<html lang="es">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Portfolio Creator{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}">
+</head>
+<body>
+    <nav class="navbar">...</nav>        <!-- Cabecera común -->
+    <main>{% block content %}{% endblock %}</main>  <!-- Contenido variable -->
+    <footer class="footer">...</footer>  <!-- Pie común -->
+</body>
+</html>
 ```
 
-### ¿Cómo funciona el selector visual?
-1. Los `<input type="radio">` están ocultos con CSS (`display: none`)
-2. El `<span class="cv-type-card">` es la tarjeta visible
-3. Cuando se selecciona un radio, el CSS lo detecta con `:checked + .cv-type-card` y cambia el estilo (borde morado, fondo claro)
-
----
-
-## 8. El template de resultado — `gemini_resumen.html`
-
+### Plantilla hija (ejemplo: login.html)
 ```html
 {% extends "portfolioCV/base.html" %}
 
+{% block title %}Iniciar sesión{% endblock %}
+
 {% block content %}
-<h1>🤖 {{ cv_type_label }}</h1>
-
-{% if error_msg %}
-    <div class="alert alert-error">{{ error_msg }}</div>
-{% endif %}
-
-{% if resumen_html %}
-    <div class="gemini-result-card">
-        <!-- Badge morado indicando que es IA -->
-        <div class="gemini-badge">
-            <span>🤖 Generado por Gemini AI</span>
-            <span>{{ cv_type_label }}</span>
-        </div>
-        
-        <!-- El contenido HTML generado por Gemini -->
-        <div class="gemini-content">
-            {{ resumen_html|safe }}
-        </div>
-    </div>
-{% endif %}
+<div class="auth-container">
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="form-error">{{ field.errors }}</div>{% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit">Entrar</button>
+    </form>
+</div>
 {% endblock %}
 ```
 
-### ¿Qué es `|safe`?
-- Por seguridad, Django escapa todo el HTML por defecto (convierte `<h1>` en `&lt;h1&gt;`)
-- `|safe` le dice a Django que confíe en ese HTML y lo renderice como tal
-- Lo usamos porque el HTML viene de nuestra conversión Markdown, no del usuario
+---
+
+## 8. Admin Site — `admin.py`
+
+```python
+from django.contrib import admin
+from .models import UserProfile, ContenidoData
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'github_username', 'gitlab_username')
+    search_fields = ('user__username',)
+
+@admin.register(ContenidoData)
+class ContenidoDataAdmin(admin.ModelAdmin):
+    list_display = ('recurso', 'usuario', 'fecha_creacion')
+    search_fields = ('recurso',)
+    list_filter = ('fecha_creacion',)
+```
+
+Accesible en `/admin/` con el superusuario creado con:
+```bash
+python manage.py createsuperuser
+```
 
 ---
 
-## 9. Los estilos CSS — `style.css`
+## 9. Tests Unitarios — `tests.py`
 
-### Sección de Gemini (fondo degradado morado)
+Suite de 15 tests usando `unittest.mock` para simular APIs externas:
+
+```python
+from unittest.mock import patch, MagicMock
+
+class APITests(TestCase):
+    @patch('portfolioCV.views.requests.get')
+    def test_github_repos(self, mock_get):
+        """Simula la respuesta de la API de GitHub"""
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: [{"name": "test-repo", "description": "Test"}]
+        )
+        response = self.client.get(reverse('github_repos'))
+        self.assertEqual(response.status_code, 200)
+```
+
+Ejecutar los tests:
+```bash
+python manage.py test portfolioCV
+```
+
+---
+
+## 10. Diseño Responsive — CSS
+
+### Media queries para móvil
 ```css
-.gemini-section {
-    border: 1px solid #c9b1ff;
-    background: linear-gradient(135deg, #faf5ff 0%, #f0ebff 100%);
+@media (max-width: 768px) {
+    .nav-container { flex-wrap: wrap; height: auto; }
+    .nav-link { font-size: 0.78rem; padding: 0.35rem 0.5rem; }
+    .cv-grid { grid-template-columns: 1fr; }  /* 1 columna en móvil */
+    .platforms-grid { grid-template-columns: 1fr; }
+    .detail-actions { flex-direction: column; }
 }
 ```
 
-### Selector de tipo de CV (tarjetas interactivas)
+### Selector de tipo de CV (radio buttons estilizados)
 ```css
-/* Ocultar el radio button nativo */
-.cv-type-option input[type="radio"] {
-    display: none;
-}
+.cv-type-option input[type="radio"] { display: none; }
 
-/* Estilo de la tarjeta */
-.cv-type-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1.25rem 0.75rem;
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    transition: all 0.25s;
-}
-
-/* Cuando está seleccionado → borde morado + fondo lila */
 .cv-type-option input[type="radio"]:checked + .cv-type-card {
     border-color: #7c3aed;
     background: #ede9fe;
     box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
-
-/* Hover → borde suave + elevar */
-.cv-type-card:hover {
-    border-color: #a78bfa;
-    transform: translateY(-2px);
-}
-```
-
-### Badge de resultado (gradiente morado)
-```css
-.gemini-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    background: linear-gradient(135deg, #7c3aed, #a78bfa);
-    color: white;
-    border-radius: 8px;
-    font-weight: 600;
-}
 ```
 
 ---
 
-## 10. Flujo completo (resumen visual)
+## 11. Despliegue en PythonAnywhere
+
+### Pasos de configuración:
+1. Crear cuenta en pythonanywhere.com
+2. Clonar repositorio: `git clone <url>`
+3. Instalar dependencias: `pip3.12 install --user django requests ...`
+4. Configurar WSGI apuntando a `PortfolioGenerator.wsgi`
+5. Configurar ficheros estáticos: `python manage.py collectstatic`
+6. Crear superusuario: `python manage.py createsuperuser`
+
+### Limitaciones del plan gratuito:
+- **Proxy obligatorio** → Todas las llamadas HTTP necesitan `proxies=PA_PROXIES`
+- **Sin Playwright** → El PDF no se puede generar (falta espacio para Chromium)
+- **512 MB de disco** → No instalar dependencias innecesarias
+
+---
+
+## 12. URLs y Recursos (19 endpoints)
+
+| URL | Método | Descripción |
+|-----|--------|-------------|
+| `/` | GET, POST | Página principal + crear recursos |
+| `/registro/` | GET, POST | Registro de usuario |
+| `/login/` | GET, POST | Inicio de sesión |
+| `/logout/` | GET | Cerrar sesión |
+| `/tokens/` | GET, POST | Configurar API keys |
+| `/gitlab/` | GET | Listar repos GitLab |
+| `/gitlab/<id>/` | GET | Detalle repo GitLab |
+| `/github/` | GET | Listar repos GitHub |
+| `/github/<owner>/<name>/` | GET | Detalle repo GitHub |
+| `/openalex/` | GET | Buscar publicaciones |
+| `/openalex/<id>/` | GET | Detalle publicación |
+| `/mi-cv/` | GET, POST | Constructor de CV |
+| `/mi-cv/add/` | POST | Añadir proyecto al CV |
+| `/mi-cv/add-ia/` | POST | Añadir resumen IA al CV |
+| `/mi-cv/remove/` | POST | Eliminar del CV |
+| `/mi-cv/descargar/` | GET | Descargar PDF o HTML |
+| `/gemini/resumen/` | POST | Página de resumen IA |
+| `/gemini/stream/` | POST | Streaming texto IA |
+| `/<recurso>/eliminar/` | POST | Eliminar recurso |
+
+---
+
+## 13. Dependencias — `requirements.txt`
 
 ```
-┌──────────────┐     ┌─────────────────┐     ┌───────────────────┐
-│  1. Usuario  │     │  2. Configurar  │     │  3. Ir a un repo  │
-│  se registra │ ──→ │  API Key Gemini │ ──→ │  (GitHub/GitLab/  │
-│  e inicia    │     │  en /tokens/    │     │   OpenAlex)       │
-│  sesión      │     │                 │     │                   │
-└──────────────┘     └─────────────────┘     └───────┬───────────┘
-                                                     │
-                                                     ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  4. En la página de detalle del repo:                           │
-│                                                                  │
-│  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐                        │
-│  │  📝  │  │  📄  │  │  💻  │  │  🎓  │  ← Seleccionar tipo   │
-│  │Extenso│  │1 Pág │  │ Tech │  │ TFG  │                        │
-│  └──────┘  └──────┘  └──────┘  └──────┘                        │
-│                                                                  │
-│  [🤖 Generar Resumen con Gemini AI]  ← Pulsar botón            │
-└──────────────────────────────────────┬───────────────────────────┘
-                                       │
-                                       ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  5. Django (views.py):                                           │
-│                                                                  │
-│  a) Recoge platform, id, cv_type del POST                       │
-│  b) Llama a la API de la plataforma → obtiene README, desc...   │
-│  c) Construye un prompt específico según el tipo de CV          │
-│  d) Llama a Gemini con google.genai → obtiene texto Markdown    │
-│  e) Convierte Markdown → HTML con la librería `markdown`        │
-│  f) Renderiza gemini_resumen.html con el resultado              │
-└──────────────────────────────────────┬───────────────────────────┘
-                                       │
-                                       ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  6. Se muestra el resumen generado en pantalla                  │
-│                                                                  │
-│  ┌─────────────────────────────────────────────┐                │
-│  │ 🤖 Generado por Gemini AI    CV Extenso    │  ← Badge      │
-│  ├─────────────────────────────────────────────┤                │
-│  │                                             │                │
-│  │  # Resumen del Proyecto                     │                │
-│  │  Este proyecto implementa...                │  ← Contenido  │
-│  │                                             │                │
-│  │  ## Tecnologías                             │                │
-│  │  - Python, Django, SQLite3...               │                │
-│  │                                             │                │
-│  └─────────────────────────────────────────────┘                │
-└──────────────────────────────────────────────────────────────────┘
+Django
+requests
+social-auth-app-django
+markdown
+openai          ← Cliente para NVIDIA Gemma-2 (protocolo OpenAI)
+playwright      ← Generación de PDF (solo local)
+httpx           ← Cliente HTTP para proxy de PythonAnywhere
 ```
 
 ---
 
-## 11. Errores comunes y soluciones
+## 14. Seguridad
 
-| Error | Causa | Solución |
-|-------|-------|----------|
-| `429 RESOURCE_EXHAUSTED` | Cuota agotada del modelo | El sistema prueba automáticamente el siguiente modelo |
-| `503 UNAVAILABLE` | Servidor Gemini saturado | Espera 3s y reintenta, luego pasa al siguiente modelo |
-| `not found` | Modelo no existe | Pasa al siguiente modelo de la lista |
-| "Configura tu API Key" | No hay clave guardada | Ir a `/tokens/` y añadir la clave |
-
----
-
-## 12. Archivos involucrados (resumen)
-
-| Archivo | Qué hace en la integración |
-|---------|---------------------------|
-| `requirements.txt` | Declara la dependencia `google-genai` |
-| `models.py` | Almacena la API Key por usuario en la BD |
-| `forms.py` | Formulario web para editar la API Key |
-| `views.py` | Lógica: recopilar datos → prompt → llamar Gemini → respuesta |
-| `urls.py` | Ruta `/gemini/resumen/` → función `generar_resumen_gemini` |
-| `tokens.html` | Tarjeta de ayuda "cómo obtener la clave" |
-| `repo_detalle.html` | Selector de tipo de CV + botón generar |
-| `gemini_resumen.html` | Muestra el resultado formateado |
-| `style.css` | Estilos del selector, badge y contenido |
+- **CSRF Token**: Todos los formularios POST llevan `{% csrf_token %}`
+- **Filtrado por usuario**: Los recursos solo son visibles para su propietario:
+  ```python
+  ContenidoData.objects.filter(usuario=request.user.username)
+  ```
+- **Contraseñas**: Django las hashea automáticamente con PBKDF2
+- **Tokens ocultos**: Se muestran como `PasswordInput` (tipo `****`)
+- **`@login_required`**: Protege todas las rutas sensibles
