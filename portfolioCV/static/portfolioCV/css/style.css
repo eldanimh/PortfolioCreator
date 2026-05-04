@@ -137,6 +137,16 @@ a:hover {
     margin-right: 0.5rem;
 }
 
+.nav-user-badge {
+    background: var(--highlight);
+    color: #ffffff;
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
 /* ─── Messages ──────────────────────────────────────────── */
 .messages-container {
     max-width: 900px;

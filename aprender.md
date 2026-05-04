@@ -500,12 +500,30 @@ base.html (padre)
     <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}">
 </head>
 <body>
-    <nav class="navbar">...</nav>        <!-- Cabecera común -->
-    <main>{% block content %}{% endblock %}</main>  <!-- Contenido variable -->
-    <footer class="footer">...</footer>  <!-- Pie común -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">◆ Portfolio Creator</a>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                <a href="/mi-cv/" class="nav-link">📄 Mi CV</a>
+                <a href="/tokens/" class="nav-link">⚙ Tokens</a>
+                <a href="/logout/" class="nav-link">Cerrar sesión</a>
+                <span class="nav-user-badge">¡Hola, {{ user.username }}!</span>
+                {% else %}
+                <a href="/login/" class="nav-link">Iniciar sesión</a>
+                <a href="/registro/" class="nav-link nav-link-accent">Registrarse</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    <main>{% block content %}{% endblock %}</main>
+    <footer class="footer">...</footer>
 </body>
 </html>
 ```
+
+La variable `{{ user.username }}` está disponible automáticamente en todas las plantillas gracias al context processor `django.contrib.auth.context_processors.auth` configurado en `settings.py`. El badge `nav-user-badge` se muestra como una pastilla roja con el nombre del usuario logueado.
+
 
 ### Plantilla hija (ejemplo: login.html)
 ```html
