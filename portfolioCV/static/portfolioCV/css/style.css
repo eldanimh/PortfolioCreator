@@ -1033,11 +1033,7 @@ a:hover {
 
     .nav-user-badge {
         font-size: 0.68rem;
-        padding: 0.25rem 0.55rem;
-        order: -1;
-        width: 100%;
-        text-align: center;
-        border-radius: 6px;
+        padding: 0.2rem 0.5rem;
     }
 
     /* Main Content */
