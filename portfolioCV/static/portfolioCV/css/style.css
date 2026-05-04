@@ -1022,11 +1022,22 @@ a:hover {
 
     .nav-links {
         gap: 0.15rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     .nav-link {
         padding: 0.35rem 0.5rem;
         font-size: 0.78rem;
+    }
+
+    .nav-user-badge {
+        font-size: 0.68rem;
+        padding: 0.25rem 0.55rem;
+        order: -1;
+        width: 100%;
+        text-align: center;
+        border-radius: 6px;
     }
 
     /* Main Content */
