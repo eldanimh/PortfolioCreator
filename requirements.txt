@@ -6,3 +6,4 @@ markdown
 openai
 playwright
 httpx
+django-allauth

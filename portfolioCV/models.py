@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class UserProfile(models.Model):
@@ -44,3 +46,11 @@ class ContenidoData(models.Model):
 
     def __str__(self):
         return self.recurso
+
+
+# ─── Signal: Crear UserProfile automáticamente ────────────
+@receiver(post_save, sender=User)
+def crear_perfil_usuario(sender, instance, created, **kwargs):
+    """Crea un UserProfile automáticamente al crear un usuario (incluido social login)"""
+    if created:
+        UserProfile.objects.get_or_create(user=instance)

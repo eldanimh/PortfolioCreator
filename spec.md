@@ -110,6 +110,7 @@ def github_repos(request):
   * el cv debe estar bien ordenado y ser bonito y facil de leer
   * puedes añadir foto linkedin y numero de telefono tambien un about me
   * funcionalidad, usa y crea los test.py de Django para probar todo el código generado. Buscando Fallos y bugs y corrigiendolos. Y volviendolo a probar hasta que no haya ningun bug. Y ejecuta siempre python manage.py test.
+  * Auth, funcionalidad, voy a usar https://docs.allauth.org/en/dev/index.html para crear inicios de sesión rápido con Github, Google y Apple, para la autentificación. Y que se puedan usar con el servidor local. y con el nuevo en pythonanywhere.com, para el despliegue.
 
 
 ## Integración con OpenAlex API (Bibliografías)
