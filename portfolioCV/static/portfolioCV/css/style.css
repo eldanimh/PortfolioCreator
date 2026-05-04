@@ -857,12 +857,123 @@ a:hover {
     font-size: 0.85rem;
 }
 
+/* ─── CV Builder Layout ─────────────────────────────────── */
+.cv-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+}
+
+.cv-sidebar {
+    background: var(--card-bg, #fff);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #eaecef);
+    align-self: start;
+}
+
+.cv-projects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.cv-download-btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.cv-item-card {
+    border-left-width: 3px;
+    border-left-style: solid;
+}
+
+.cv-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cv-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.cv-item-badge {
+    font-size: 0.85rem;
+    color: #57606a;
+    background: #eaecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.cv-item-id {
+    font-size: 0.85rem;
+    color: #57606a;
+    word-break: break-all;
+}
+
+.cv-item-actions {
+    flex-shrink: 0;
+}
+
 /* ─── Responsive ────────────────────────────────────────── */
 @media (max-width: 768px) {
+    /* Navbar */
     .nav-container {
-        padding: 0 1rem;
+        padding: 0 0.75rem;
+        height: auto;
+        min-height: 56px;
+        flex-wrap: wrap;
+        gap: 0.25rem;
     }
 
+    .nav-brand {
+        font-size: 1rem;
+    }
+
+    .brand-icon {
+        font-size: 1.2rem;
+    }
+
+    .nav-links {
+        gap: 0.15rem;
+    }
+
+    .nav-link {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.78rem;
+    }
+
+    /* Main Content */
+    .main-content {
+        padding: 0.75rem;
+    }
+
+    .page-header {
+        padding: 1rem 0;
+    }
+
+    .page-title {
+        font-size: 1.4rem;
+    }
+
+    /* Hero */
+    .hero-title {
+        font-size: 1.6rem;
+    }
+
+    .hero-subtitle {
+        font-size: 0.95rem;
+    }
+
+    /* Grids */
     .platforms-grid {
         grid-template-columns: 1fr;
     }
@@ -871,25 +982,91 @@ a:hover {
         grid-template-columns: 1fr;
     }
 
-    .hero-title {
-        font-size: 2rem;
-    }
-
     .token-help {
         grid-template-columns: 1fr;
     }
 
+    /* CV Builder */
+    .cv-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cv-sidebar {
+        padding: 1rem;
+    }
+
+    .cv-projects-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cv-download-btns {
+        width: 100%;
+    }
+
+    .cv-download-btns .btn {
+        flex: 1;
+        text-align: center;
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .cv-item-card {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+
+    .cv-item-id {
+        font-size: 0.75rem;
+    }
+
+    /* Buttons */
     .cta-buttons {
         flex-direction: column;
         align-items: center;
     }
 
-    .main-content {
+    .btn {
+        font-size: 0.85rem;
+    }
+
+    /* Auth */
+    .auth-card {
+        padding: 1.5rem;
+        margin: 0 0.5rem;
+    }
+
+    /* Detail pages */
+    .detail-container {
+        padding: 0;
+    }
+
+    .detail-card {
         padding: 1rem;
     }
 
-    .auth-card {
-        padding: 1.5rem;
+    .detail-actions {
+        flex-direction: column;
+    }
+
+    .detail-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 1.5rem 0.75rem;
+    }
+
+    .footer-content p {
+        font-size: 0.75rem;
+    }
+
+    /* Repo cards */
+    .repo-card {
+        padding: 1rem;
     }
 }
 

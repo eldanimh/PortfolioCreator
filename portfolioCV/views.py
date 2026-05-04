@@ -3,7 +3,7 @@ import json
 import requests
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, Http404
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
@@ -83,6 +83,22 @@ def registro_view(request):
             login(request, user)
             messages.success(request, '¡Cuenta creada correctamente! Configura tus tokens.')
             return redirect('configurar_tokens')
+        else:
+            # Mostrar errores específicos en español
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if 'already exists' in error or 'ya existe' in error:
+                        messages.error(request, f'El nombre de usuario "{form.data.get("username", "")}" ya está registrado. Elige otro.')
+                    elif 'too short' in error or 'muy corta' in error or 'at least' in error:
+                        messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+                    elif 'too common' in error or 'muy común' in error:
+                        messages.error(request, 'Esa contraseña es demasiado común. Usa una más segura.')
+                    elif 'entirely numeric' in error or 'numérica' in error:
+                        messages.error(request, 'La contraseña no puede ser completamente numérica.')
+                    elif 'too similar' in error or 'similar' in error:
+                        messages.error(request, 'La contraseña es demasiado parecida a tu nombre de usuario.')
+                    elif 'didn' in error or 'no coinciden' in error or 'match' in error:
+                        messages.error(request, 'Las dos contraseñas no coinciden.')
     else:
         form = RegistroForm()
     return render(request, 'portfolioCV/registro.html', {'form': form})
@@ -91,14 +107,29 @@ def registro_view(request):
 def login_view(request):
     """Inicio de sesión"""
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            # Crear perfil si no existe
-            UserProfile.objects.get_or_create(user=user)
-            messages.success(request, f'¡Bienvenido, {user.username}!')
-            return redirect('index')
+        username = request.POST.get('username', '')
+        password = request.POST.get('password', '')
+        
+        # Comprobar si el usuario existe
+        from django.contrib.auth.models import User
+        user_exists = User.objects.filter(username=username).exists()
+        
+        if not username or not password:
+            messages.error(request, 'Por favor, rellena todos los campos.')
+        elif not user_exists:
+            messages.error(request, f'No existe ninguna cuenta con el usuario "{username}". ¿Quieres registrarte?')
+        else:
+            # El usuario existe, intentamos autenticar
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                UserProfile.objects.get_or_create(user=user)
+                messages.success(request, f'¡Bienvenido, {user.username}!')
+                return redirect('index')
+            else:
+                messages.error(request, 'Contraseña incorrecta. Inténtalo de nuevo.')
+        
+        form = AuthenticationForm()
     else:
         form = AuthenticationForm()
     return render(request, 'portfolioCV/login.html', {'form': form})

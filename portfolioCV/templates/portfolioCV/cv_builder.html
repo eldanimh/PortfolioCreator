@@ -9,9 +9,9 @@
     <p style="color: #57606a;">Crea un currículum unificado agrupando tus proyectos de GitHub, GitLab y publicaciones de OpenAlex.</p>
 </div>
 
-<div class="grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+<div class="cv-grid">
     <!-- Columna Izquierda: Datos Personales -->
-    <div class="card" style="background: var(--card-bg, #fff); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #eaecef); align-self: start;">
+    <div class="card cv-sidebar">
         <h3>Datos Personales</h3>
         <hr style="margin: 10px 0; border: none; border-top: 1px solid #eaecef;">
         <form method="post" action="{% url 'cv_builder' %}" enctype="multipart/form-data">
@@ -52,10 +52,10 @@
 
     <!-- Columna Derecha: Cesta de Proyectos -->
     <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div class="cv-projects-header">
             <h3>Proyectos Agregados ({{ cv_data.items|length }})</h3>
             {% if cv_data.items %}
-            <div style="display: flex; gap: 10px;">
+            <div class="cv-download-btns">
                 <a href="{% url 'descargar_cv_completo' %}?format=html" class="btn btn-secondary">
                     🌐 Descargar HTML
                 </a>
@@ -75,15 +75,17 @@
         
         <div style="display: flex; flex-direction: column; gap: 1rem;">
             {% for item in cv_data.items %}
-            <div class="repo-card" style="display: flex; justify-content: space-between; align-items: center; border-left: 3px solid {% if item.platform == 'GitHub' %}#24292f{% elif item.platform == 'OpenAlex' %}#f39c12{% else %}#fc6d26{% endif %};">
-                <div>
+            <div class="repo-card cv-item-card">
+                <div class="cv-item-info">
                     <h4 style="margin: 0;">{{ item.name }}</h4>
-                    <span style="font-size: 0.85rem; color: #57606a; background: #eaecef; padding: 2px 6px; border-radius: 4px; margin-top: 5px; display: inline-block;">
-                        {{ item.platform }}
-                    </span>
-                    <span style="font-size: 0.85rem; color: #57606a; margin-left: 5px;">ID: {{ item.id }}</span>
+                    <div class="cv-item-meta">
+                        <span class="cv-item-badge">
+                            {{ item.platform }}
+                        </span>
+                        <span class="cv-item-id">ID: {{ item.id }}</span>
+                    </div>
                 </div>
-                <div>
+                <div class="cv-item-actions">
                     <form method="post" action="{% url 'eliminar_del_cv' %}" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="index" value="{{ forloop.counter0 }}">
