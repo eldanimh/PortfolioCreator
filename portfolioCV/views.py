@@ -99,7 +99,7 @@ def registro_view(request):
         if form.is_valid():  # Valida: username único, contraseña segura, contraseñas coinciden
             user = form.save()  # Crea el User en la BD (INSERT INTO auth_user...)
             UserProfile.objects.get_or_create(user=user)  # Obtiene el perfil (creado por la signal) o lo crea si no existe
-            login(request, user)  # Inicia sesión automáticamente → crea cookie sessionid
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')  # Especificamos el backend porque tenemos 2 (normal + allauth)
             messages.success(request, '¡Cuenta creada correctamente! Configura tus tokens.')
             return redirect('configurar_tokens')  # Redirige a /tokens/ (HTTP 302)
         else:
@@ -143,7 +143,7 @@ def login_view(request):
             # Django NUNCA guarda contraseñas en texto plano, usa hashing (pbkdf2_sha256)
             user = authenticate(request, username=username, password=password)
             if user is not None:  # Contraseña correcta
-                login(request, user)  # Crea sesión en django_session + envía cookie sessionid
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')  # Especificamos el backend
                 UserProfile.objects.get_or_create(user=user)  # Asegura que tiene perfil
                 messages.success(request, f'¡Bienvenido, {user.username}!')
                 return redirect('index')  # HTTP 302 → /
