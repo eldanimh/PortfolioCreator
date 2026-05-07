@@ -98,7 +98,7 @@ def registro_view(request):
         form = RegistroForm(request.POST)  # Rellenamos el formulario con los datos del POST
         if form.is_valid():  # Valida: username único, contraseña segura, contraseñas coinciden
             user = form.save()  # Crea el User en la BD (INSERT INTO auth_user...)
-            UserProfile.objects.create(user=user)  # Crea su perfil con tokens vacíos
+            UserProfile.objects.get_or_create(user=user)  # Obtiene el perfil (creado por la signal) o lo crea si no existe
             login(request, user)  # Inicia sesión automáticamente → crea cookie sessionid
             messages.success(request, '¡Cuenta creada correctamente! Configura tus tokens.')
             return redirect('configurar_tokens')  # Redirige a /tokens/ (HTTP 302)
