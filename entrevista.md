@@ -4,6 +4,19 @@ Documento preparatorio para la defensa oral. Preguntas típicas del profesor con
 
 ---
 
+## 0. Resumen Global: ¿Cómo funciona la aplicación? (El "Elevator Pitch")
+
+Si el profesor te pide: *"Explícame en un minuto qué hace tu aplicación y cómo funciona por debajo"*.
+
+**"Mi aplicación es un Generador de Portafolios Profesionales basado en Django."**
+1. **El Usuario:** Se autentica en la plataforma (puede ser mediante usuario/contraseña o OAuth con GitHub). Las claves y tokens de sus APIs (GitHub, GitLab, OpenAlex) se guardan de forma persistente en una tabla de SQLite llamada `UserProfile`.
+2. **Extracción de Datos:** Cuando el usuario navega por la app, el backend (Django) hace peticiones HTTP a las APIs REST externas usando esos tokens para extraer en tiempo real sus repositorios y publicaciones.
+3. **El Carrito (CV Unificado):** El usuario puede ir añadiendo repositorios a una "cesta" o "carrito". El estado de este carrito se serializa a JSON y se guarda en la base de datos, actuando como un almacén persistente.
+4. **Inteligencia Artificial:** He integrado un LLM (Gemini/Local) que lee el README y los lenguajes del repositorio, y genera un resumen automático. Esto se envía al navegador usando *StreamingHTTPResponse* para evitar cuelgues por *timeout*.
+5. **Generación de PDF:** Finalmente, con todos los datos recogidos de las APIs y la IA, Django renderiza una plantilla HTML. Luego, usando **Playwright** (un navegador *headless*), "imprimimos" virtualmente ese HTML a PDF en la memoria RAM y se lo enviamos al usuario para descargar. Todo en un flujo continuo sin dejar archivos temporales en el servidor.
+
+---
+
 ## 1. HTTP: GET, POST y Query Strings
 
 ### ¿Cuándo haces un GET y cuándo un POST?
@@ -48,9 +61,13 @@ params = {"per_page": 50, "sort": "updated"}
 En el **cuerpo (body)** de la petición HTTP, NO en la URL. Por eso no se ven en la barra del navegador.
 
 ```python
-# POST → los datos viajan en el body
-platform = request.POST.get('platform')  # body del HTTP
-item_id = request.POST.get('id')         # body del HTTP
+# 📌 Archivo: portfolioCV/views.py (Vista agregar_al_cv)
+@login_required
+def agregar_al_cv(request):
+    if request.method == 'POST':
+        # Los datos viajan en el cuerpo de la petición HTTP, NO en la URL
+        platform = request.POST.get('platform')  
+        item_id = request.POST.get('id')         
 ```
 
 ---
@@ -82,6 +99,18 @@ Django usa cookies para **mantener la sesión del usuario**. La cookie principal
 - Es la forma de mantener el **estado** entre peticiones HTTP (que son stateless por naturaleza)
 - Sin esta cookie, el servidor NO sabría que ya hiciste login → te pediría autenticarte en cada página
 - Es `HttpOnly` → JavaScript NO puede leerla (seguridad contra ataques XSS)
+
+**📌 ¿Cómo leo el usuario en mi código?**
+Gracias al Middleware de Django que procesa esta cookie `sessionid`, yo no tengo que buscar manualmente en la base de datos. Django me lo da "masticado" en `request.user`:
+
+```python
+# 📌 Archivo: portfolioCV/views.py
+@login_required
+def cv_builder(request):
+    # Ya sé quién es el usuario directamente de la petición:
+    usuario_actual = request.user 
+    contenido_obj, data = _get_cv_data(usuario_actual)
+```
 
 ### ¿Qué hay dentro de la cookie `sessionid`?
 
@@ -280,9 +309,19 @@ Es decir, se reutiliza la misma tabla pero el campo `contenido` almacena un JSON
 Es un **conversor** de Django. Captura una parte de la URL y la pasa como argumento a la vista:
 
 ```python
-path('<str:recurso>/', views.detalle_recurso)
-# Si la URL es /mi-proyecto/ → recurso = "mi-proyecto"
-# Si la URL es /notas-clase/ → recurso = "notas-clase"
+# 📌 Archivo: portfolioCV/urls.py
+urlpatterns = [
+    # Si la URL es /openalex/123xyz/ -> work_id="123xyz"
+    path('openalex/<str:work_id>/', views.openalex_repo_detalle, name='openalex_repo_detalle'),
+    
+    # Si la URL es /gitlab/456/ -> repo_id=456 (y Django asegura que sea un entero)
+    path('gitlab/<int:repo_id>/', views.gitlab_repo_detalle, name='gitlab_repo_detalle'),
+]
+
+# 📌 Archivo: portfolioCV/views.py
+def openalex_repo_detalle(request, work_id):
+    # La variable work_id me llega mágicamente como argumento a la función
+    url = f"https://api.openalex.org/works/{work_id}"
 ```
 
 Tipos de conversores:
@@ -352,19 +391,26 @@ Si `<str:recurso>/` fuera primero, `/gitlab/` se interpretaría como `recurso="g
 ### ¿Cómo se conecta con GitHub?
 
 ```python
-headers = {
-    "Authorization": f"Bearer {profile.github_token}",  # Token personal del usuario
-    "Accept": "application/vnd.github.v3+json"           # Formato de respuesta deseado
-}
+# 📌 Archivo: portfolioCV/views.py (Vista github_repo_detalle)
+def github_repo_detalle(request, owner, repo_name):
+    profile = get_object_or_404(UserProfile, user=request.user)
+    
+    # 1. Preparamos las cabeceras con el Token de la base de datos
+    headers = {
+        "Authorization": f"Bearer {profile.github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
 
-response = requests.get(
-    f"https://api.github.com/user/repos",   # Endpoint de la API REST de GitHub
-    headers=headers,                         # Cabeceras de autenticación
-    params={"per_page": 50, "sort": "updated"},  # Query string: ?per_page=50&sort=updated
-    timeout=10                               # Máximo 10 segundos esperando respuesta
-)
+    # 2. Hacemos la petición HTTP GET a la API externa
+    response = requests.get(
+        f"https://api.github.com/repos/{owner}/{repo_name}",
+        headers=headers,
+        timeout=10,
+        proxies=PA_PROXIES # Vital: Proxy para salir a Internet en PythonAnywhere
+    )
 
-repos = response.json()  # Parsear la respuesta JSON a un diccionario Python
+    # 3. Parseamos la respuesta de texto plano a un diccionario Python
+    repo_data = response.json() 
 ```
 
 ### ¿Y GitLab URJC?
@@ -408,8 +454,15 @@ Petición HTTP →  SecurityMiddleware
 
 Es un **decorador** que se pone encima de la vista:
 ```python
+# 📌 Archivo: portfolioCV/views.py
+from django.contrib.auth.decorators import login_required
+
+# Al poner @login_required, el Middleware de Django se activa ANTES
+# de ejecutar la función. Si la cookie sessionid no existe o es inválida, 
+# la función no se ejecuta y Django devuelve un redirect (302) al /login/
 @login_required
 def gitlab_repos(request):
+    profile = get_object_or_404(UserProfile, user=request.user)
     ...
 ```
 
@@ -468,30 +521,154 @@ Django traduce `{% static '...' %}` a la URL real del archivo (ej: `/static/port
 ## 11. Conceptos Arquitectónicos Avanzados (Para subir nota)
 
 ### A. Login Social (OAuth con GitHub/Google)
-Si te preguntan: *¿Cómo funciona el login con GitHub?*
-1. El usuario hace clic en "Entrar con GitHub".
-2. Nuestra app lo **redirige** a github.com pidiendo permiso.
-3. El usuario acepta en la web de GitHub.
-4. GitHub redirige de vuelta a nuestra app (a una URL de **callback**) con un código temporal.
-5. Nuestra app (`django-allauth`) intercambia ese código por los datos del usuario.
-6. Si el usuario no existía en nuestra BD, lo crea automáticamente. Luego inicia sesión normal (con la cookie `sessionid`).
+Si te preguntan: *¿Cómo funciona exactamente el login con GitHub?*
 
+El protocolo OAuth2 es un "baile" a 3 bandas entre el Navegador, nuestro Servidor (Django) y el Servidor de GitHub. Su objetivo principal es que el usuario se autentique **sin tener que darnos su contraseña**.
+
+```
+┌──────────┐                          ┌──────────┐                    ┌─────────┐
+│ Navegador│                          │  Django  │                    │ GitHub  │
+└────┬─────┘                          └────┬─────┘                    └────┬────┘
+     │                                     │                               │
+     │ 1. Clic en "Entrar con GitHub"      │                               │
+     │ ──────────────────────────────────→ │                               │
+     │                                     │                               │
+     │ 2. 302 Redirect a github.com/login  │                               │
+     │    (Incluye nuestro CLIENT_ID)      │                               │
+     │ ←─────────────────────────────────  │                               │
+     │                                     │                               │
+     │ 3. GET github.com/login             │                               │
+     │ ──────────────────────────────────────────────────────────────────→ │
+     │                                     │                               │
+     │ 4. GitHub muestra: "¿Das permiso a  │                               │
+     │    PortfolioGen para leer tus datos?"                               │
+     │ ←────────────────────────────────────────────────────────────────── │
+     │                                     │                               │
+     │ 5. Usuario pulsa "Autorizar"        │                               │
+     │ ──────────────────────────────────────────────────────────────────→ │
+     │                                     │                               │
+     │ 6. 302 Redirect de vuelta a Django  │                               │
+     │    URL: /callback/?code=XYZ123      │                               │
+     │ ←────────────────────────────────────────────────────────────────── │
+     │                                     │                               │
+     │ 7. GET /callback/?code=XYZ123       │                               │
+     │ ──────────────────────────────────→ │                               │
+     │                                     │ 8. POST a GitHub con:         │
+     │                                     │    - code=XYZ123              │
+     │                                     │    - CLIENT_SECRET            │
+     │                                     │ ────────────────────────────→ │
+     │                                     │                               │
+     │                                     │ 9. Devuelve Access Token      │
+     │                                     │ ←──────────────────────────── │
+     │                                     │                               │
+     │                                     │ 10. Django usa el Token para  │
+     │                                     │     pedir email y nombre      │
+     │                                     │ ────────────────────────────→ │
+     │                                     │                               │
+     │                                     │ 11. Devuelve {"email": "..."} │
+     │                                     │ ←──────────────────────────── │
+     │                                     │                               │
+     │                                     │ 12. Django crea/busca al User │
+     │                                     │ 13. Crea cookie sessionid     │
+     │                                     │                               │
+     │ 14. 302 Redirect a página principal │                               │
+     │     Set-Cookie: sessionid=abc123    │                               │
+     │ ←─────────────────────────────────  │                               │
+```
+
+**Resumen clave para el profe:**
+1. Nosotros nunca vemos la contraseña del usuario.
+2. Todo se basa en intercambiar un **código temporal** (paso 6) por un **Token de Acceso** (paso 9).
+3. El intercambio se hace **de servidor a servidor** usando un "Client Secret" que nadie más conoce.
+4. `django-allauth` abstrae todo este "baile".
+
+**📌 ¿Dónde está esto en el código?**
+Todo este motor no está en `views.py` porque lo gestiona la librería `allauth`. Se configura en dos sitios clave:
+
+- **Archivo `PortfolioGenerator/settings.py`**:
+  ```python
+  INSTALLED_APPS = [
+      ...
+      'allauth',
+      'allauth.account',
+      'allauth.socialaccount',
+      'allauth.socialaccount.providers.github',
+  ]
+  ```
+- **Archivo `PortfolioGenerator/urls.py`** (Línea 14):
+  ```python
+  urlpatterns = [
+      ...
+      path('accounts/', include('allauth.urls')), # Delega el OAuth a allauth
+  ]
+  ```
 ### B. Streaming y la IA (StreamingHttpResponse)
 Si te preguntan: *¿Por qué usas StreamingHttpResponse en vez de un HttpResponse normal para la IA?*
 - Si la IA (Gemini/Llama) tarda 40 segundos en generar el resumen, un `HttpResponse` normal se quedaría "cargando" y servicios como PythonAnywhere cortan la conexión por **Timeout** a los 30 segundos dando error.
 - Usando `StreamingHttpResponse` con un `yield` en Python, enviamos el texto **palabra por palabra** en tiempo real. 
-- La conexión se mantiene viva y el usuario ve un efecto de "máquina de escribir" usando JavaScript (`fetch` y `ReadableStream`).
 
+**📌 ¿Dónde está esto en el código?**
+- **Archivo `portfolioCV/views.py`** (a partir de la línea 906):
+  ```python
+  from django.http import StreamingHttpResponse
+
+  def stream_resumen_gemini(request):
+      def event_stream():
+          ...
+          # Petición a la API de la IA con stream=True
+          response = client.chat.completions.create(..., stream=True)
+          
+          # Bucle que "escupe" trocitos de texto al navegador
+          for chunk in response:
+              yield chunk.choices[0].delta.content 
+              
+      # Devuelve la respuesta manteniendo la conexión abierta
+      return StreamingHttpResponse(event_stream(), content_type='text/plain')
+  ```
 ### C. Persistencia del "Carrito" (JSON Serialization)
 Si te preguntan: *¿Cómo guardas en la base de datos que un usuario ha añadido 3 repos y 2 obras al CV?*
-- No he creado una tabla por cada ítem. He usado el campo `contenido` (que es de tipo `TextField` / texto largo) de la tabla `ContenidoData`.
-- Transformo un **diccionario de Python** con toda la estructura (info personal + array de ítems) a un string de texto usando `json.dumps(data)`. 
-- Cuando el usuario entra al creador de CV, leo ese string de la BD y lo vuelvo a convertir a diccionario con `json.loads(texto)`. Es un modelo de datos flexible tipo "NoSQL" dentro de SQLite.
+- No he creado una tabla por cada ítem. He usado el campo `contenido` (que es un `TextField`) de la tabla `ContenidoData`.
+- Transformo un **diccionario de Python** a un string usando `json.dumps(data)`. Y para leer, `json.loads(texto)`.
 
+**📌 ¿Dónde está esto en el código?**
+- **Archivo `portfolioCV/models.py`** (Línea 30):
+  ```python
+  class ContenidoData(models.Model):
+      ...
+      contenido = models.TextField() # Aquí guardamos todo el JSON gigante
+  ```
+- **Archivo `portfolioCV/views.py`** (Línea 679 - `_get_cv_data` y 714 - `cv_builder`):
+  ```python
+  # LEER de la BD: de String a Diccionario Python
+  data = json.loads(contenido_obj.contenido) 
+
+  # ESCRIBIR a la BD: de Diccionario Python a String
+  contenido_obj.contenido = json.dumps(data)
+  contenido_obj.save()
+  ```
 ### D. Generación de PDFs (Playwright)
 Si te preguntan: *¿Cómo generas el PDF final?*
-1. Recopilo los datos de las APIs (descripciones, autores, READMEs).
-2. Convierto los READMEs de Markdown a código HTML usando la librería `markdown`.
-3. Inyecto todo ese HTML, junto con el CSS, en un template (`cv_template.html`).
-4. Utilizo **Playwright** (un navegador web oculto/headless basado en Chromium).
-5. Playwright abre ese HTML como si fuera un usuario real, aplica los estilos de GitHub, e imprime la página a PDF devolviendo los **bytes en memoria** (usando `io.BytesIO`), sin necesidad de guardar archivos temporales en el disco del servidor.
+1. Recopilo los datos de las APIs y convierto los Markdown a HTML.
+2. Inyecto todo ese HTML en un template (`cv_template.html`).
+3. Playwright abre ese HTML como si fuera un usuario, aplica los estilos, e imprime a PDF devolviendo los **bytes en memoria** (`io.BytesIO`), sin guardar basura en el disco duro.
+
+**📌 ¿Dónde está esto en el código?**
+- **Archivo `portfolioCV/views.py`** (a partir de la línea 597 - `_generar_pdf`):
+  ```python
+  import io
+  from playwright.sync_api import sync_playwright
+
+  buffer = io.BytesIO() # RAM virtual, no es disco duro
+  
+  with sync_playwright() as p:
+      browser = p.chromium.launch(headless=True) # Navegador invisible
+      page = browser.new_page()
+      page.set_content(html_string, wait_until='networkidle')
+      
+      # Imprime a PDF
+      pdf_bytes = page.pdf(format="A4", print_background=True)
+      browser.close()
+
+  buffer.write(pdf_bytes) # Guardamos en memoria
+  response = HttpResponse(buffer, content_type='application/pdf')
+  ```

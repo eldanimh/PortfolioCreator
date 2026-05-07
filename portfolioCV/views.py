@@ -599,7 +599,36 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     Recibe los datos unificados (da igual si vienen de GitHub o GitLab) y los renderiza en un PDF."""
     from django.template.loader import render_to_string
     import markdown
-    from playwright.sync_api import sync_playwright
+    
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        error_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Error PDF</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                .container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 40px; max-width: 600px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+                h1 { color: #ff7b72; margin-top: 0; }
+                p { line-height: 1.6; font-size: 16px; margin-bottom: 20px; }
+                .btn { display: inline-block; background-color: #238636; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; border: 1px solid rgba(240, 246, 252, 0.1); }
+                .btn:hover { background-color: #2ea043; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>⚠️ Generación de PDF no disponible</h1>
+                <p>La librería Playwright no está instalada en este entorno (PythonAnywhere). Las limitaciones de espacio en la nube bloquean la ejecución del motor de PDFs.</p>
+                <p>Por favor, usa el creador de <strong>CV Unificado (El Carrito)</strong> y dale a la opción de descargar como <strong>HTML</strong>, o corre la aplicación en tu entorno local (Mac).</p>
+                <a href="javascript:history.back()" class="btn">Volver Atrás</a>
+            </div>
+        </body>
+        </html>
+        """
+        return HttpResponse(error_html, status=501)
 
     buffer = io.BytesIO()  # Creamos un archivo temporal en la memoria RAM
     
@@ -1082,12 +1111,32 @@ def _generar_pdf_completo(user, cv_data):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return HttpResponse(
-            "<h1>Generación de PDF no disponible</h1>"
-            "<p>La librería Playwright no está instalada en este entorno (probablemente por limitaciones de espacio en la nube).</p>"
-            "<p>Por favor, utiliza la opción <strong>Descargar HTML</strong> o ejecuta el proyecto en local.</p>",
-            status=501
-        )
+        error_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Error PDF</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                .container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 40px; max-width: 600px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+                h1 { color: #ff7b72; margin-top: 0; }
+                p { line-height: 1.6; font-size: 16px; margin-bottom: 20px; }
+                .btn { display: inline-block; background-color: #238636; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; border: 1px solid rgba(240, 246, 252, 0.1); }
+                .btn:hover { background-color: #2ea043; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>⚠️ Generación de PDF no disponible</h1>
+                <p>La librería Playwright no está instalada en este entorno (PythonAnywhere). Las limitaciones de espacio en la nube bloquean la ejecución del motor de PDFs.</p>
+                <p>Por favor, utiliza la opción <strong>Descargar HTML</strong> para exportar tu CV profesional desde aquí.</p>
+                <a href="javascript:history.back()" class="btn">Volver Atrás</a>
+            </div>
+        </body>
+        </html>
+        """
+        return HttpResponse(error_html, status=501)
 
     buffer = io.BytesIO()
     

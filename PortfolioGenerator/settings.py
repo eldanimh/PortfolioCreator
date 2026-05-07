@@ -20,48 +20,65 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# Esta es la llave maestra de Django. Se usa para firmar las cookies de sesión (sessionid)
+# y crear los hashes de las contraseñas. ¡Si se filtra, pueden falsificar sesiones!
 SECRET_KEY = 'django-insecure-%9de3%*4-dev&1+vkzg%4wteaf%fo4gl$evxnoo3namm2@0(sz'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# En True muestra la pantalla amarilla de error de Django con detalles del código.
+# En producción (PythonAnywhere) DEBE estar en False para que los usuarios vean la página 404/500 estándar.
+DEBUG = False
 
+# Dominios desde los que se permite acceder a la aplicación.
+# '*' significa "todos", útil para desarrollo local y para PythonAnywhere al mismo tiempo.
 ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
+# INSTALLED_APPS define los módulos activados en tu proyecto Django.
+# Si no está aquí, Django ignora las tablas y URLs de esa app.
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
+    # --- Apps nativas de Django ---
+    'django.contrib.admin',      # Panel de administración (/admin)
+    'django.contrib.auth',       # Sistema base de usuarios y permisos
     'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.sites',
+    'django.contrib.sessions',   # Gestiona la tabla django_session en BD
+    'django.contrib.messages',   # Los mensajitos flash verdes/rojos que salen arriba
+    'django.contrib.staticfiles',# Sirve CSS, JS e imágenes
+    'django.contrib.sites',      # Requerido por allauth (SITE_ID = 1)
+    
+    # --- Apps de terceros (Allauth para Login Social) ---
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.github',
-    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github', # Proveedor OAuth GitHub
+    'allauth.socialaccount.providers.google', # Proveedor OAuth Google
+    
+    # --- Nuestra App Principal ---
     'portfolioCV',
 ]
 
+# Identificador del sitio para allauth (corresponde a un registro en la tabla django_site)
 SITE_ID = 1
 
+# Backends de autenticación: indican a Django CÓMO comprobar si un usuario es válido.
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',           # Login normal (usuario/contraseña en BD)
+    'allauth.account.auth_backends.AuthenticationBackend', # Login Social (GitHub/Google)
 ]
 
+# MIDDLEWARE: Capas que interceptan las peticiones HTTP (request) ANTES de llegar a views.py
+# y las respuestas (response) ANTES de enviarlas al navegador.
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',  # Lee/crea la cookie 'sessionid'
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',             # Bloquea POSTs si no traen {% csrf_token %}
+    'django.contrib.auth.middleware.AuthenticationMiddleware',# Mete al usuario en request.user
+    'django.contrib.messages.middleware.MessageMiddleware',  # Carga los mensajes flash
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
+    'allauth.account.middleware.AccountMiddleware',          # Lógica intermedia del login social
 ]
 
 ROOT_URLCONF = 'PortfolioGenerator.urls'
@@ -86,8 +103,8 @@ WSGI_APPLICATION = 'PortfolioGenerator.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
+# Aquí se define dónde y cómo guardar los datos (Modelos).
+# Estamos usando SQLite, que guarda toda la BD en un solo fichero local llamado db.sqlite3.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -128,25 +145,26 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
-
+# URL base pública desde el navegador (ej: tusitio.com/static/css/style.css)
 STATIC_URL = 'static/'
+
 import os
+# Carpeta FISICA en el servidor donde se juntan todos los estáticos al hacer 'collectstatic'
+# Esto es vital para que PythonAnywhere sepa de dónde servir el CSS en producción.
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
-
+# Hace que los IDs de la base de datos (id) se autoincrementen y sean enteros grandes.
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login settings
-LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+# --- RUTAS DE AUTENTICACIÓN (Login settings) ---
+LOGIN_URL = '/login/'              # Si el @login_required salta, redirige aquí
+LOGIN_REDIRECT_URL = '/'           # Si haces login con éxito, vas al index
+LOGOUT_REDIRECT_URL = '/'          # Si haces logout, vas al index
 
-# Allauth settings
-ACCOUNT_EMAIL_VERIFICATION = 'none'
-ACCOUNT_LOGIN_ON_SIGNUP = True
+# --- CONFIGURACIÓN DEL LOGIN SOCIAL (Allauth settings) ---
+ACCOUNT_EMAIL_VERIFICATION = 'none' # No pedimos confirmar el email por correo electrónico
+ACCOUNT_LOGIN_ON_SIGNUP = True      # Tras registrarte por primera vez con GitHub, te hace login directo
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-SOCIALACCOUNT_LOGIN_ON_GET = True
-SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True   # Al pinchar en GitHub se salta una pantalla intermedia de confirmación
+SOCIALACCOUNT_AUTO_SIGNUP = True    # Crea el usuario en nuestra BD automáticamente si GitHub dice que es OK
