@@ -65,6 +65,7 @@ class FormTests(TestCase):
 class AuthenticationTests(TestCase):
     def setUp(self):
         self.client = Client()
+        # Creamos un usuario de prueba (la señal post_save creará automáticamente su UserProfile)
         self.user = User.objects.create_user(username='testuser', password='testpassword123')
         
     def test_login_required(self):
@@ -73,12 +74,53 @@ class AuthenticationTests(TestCase):
         self.assertNotEqual(response.status_code, 200)
         self.assertTrue(response.url.startswith(reverse('login')))
         
-    def test_login_success(self):
-        """Test successful login redirects correctly"""
-        login = self.client.login(username='testuser', password='testpassword123')
-        self.assertTrue(login)
-        response = self.client.get(reverse('index'))
+    def test_registro_view_success(self):
+        """Prueba que el registro funciona correctamente y NO lanza IntegrityError por la señal post_save"""
+        data = {
+            'username': 'nuevousuario1',
+            'email': 'nuevo@example.com',
+            'password1': 'PasswordFuerte123!',
+            'password2': 'PasswordFuerte123!'
+        }
+        response = self.client.post(reverse('registro'), data)
+        
+        # Debe redirigir a configurar_tokens (HTTP 302)
+        self.assertRedirects(response, reverse('configurar_tokens'))
+        
+        # Verificamos que se ha creado el usuario
+        self.assertTrue(User.objects.filter(username='nuevousuario1').exists())
+        
+        # Verificamos que se ha creado su UserProfile (y no ha fallado por duplicado)
+        self.assertTrue(UserProfile.objects.filter(user__username='nuevousuario1').exists())
+        
+        # Verificamos que ha iniciado sesión correctamente (evitando el error del backend múltiple)
+        self.assertTrue('_auth_user_id' in self.client.session)
+
+    def test_login_view_success(self):
+        """Prueba que el login manual funciona y NO lanza ValueError por múltiples backends"""
+        data = {
+            'username': 'testuser',
+            'password': 'testpassword123'
+        }
+        response = self.client.post(reverse('login'), data)
+        
+        # Debe redirigir al index (HTTP 302)
+        self.assertRedirects(response, reverse('index'))
+        
+        # Verificamos que la sesión está activa
+        self.assertTrue('_auth_user_id' in self.client.session)
+        
+    def test_login_view_invalid(self):
+        """Prueba que un login incorrecto recarga la página con error"""
+        data = {
+            'username': 'testuser',
+            'password': 'contraseñamala'
+        }
+        response = self.client.post(reverse('login'), data)
+        
+        # No debe redirigir, debe volver a cargar la plantilla de login con status 200
         self.assertEqual(response.status_code, 200)
+        self.assertFalse('_auth_user_id' in self.client.session)
 
 from unittest.mock import patch
 
