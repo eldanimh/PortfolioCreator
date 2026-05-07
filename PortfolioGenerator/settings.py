@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-%9de3%*4-dev&1+vkzg%4wteaf%fo4gl$evxnoo3namm2@0(sz
 # SECURITY WARNING: don't run with debug turned on in production!
 # En True muestra la pantalla amarilla de error de Django con detalles del código.
 # En producción (PythonAnywhere) DEBE estar en False para que los usuarios vean la página 404/500 estándar.
-DEBUG = False
+DEBUG = True
 
 # Dominios desde los que se permite acceder a la aplicación.
 # '*' significa "todos", útil para desarrollo local y para PythonAnywhere al mismo tiempo.

@@ -17,6 +17,55 @@ Si el profesor te pide: *"Explícame en un minuto qué hace tu aplicación y có
 
 ---
 
+## 0.5. Comandos de Terminal y Migraciones
+
+Si te preguntan: *"¿Cómo arrancas el proyecto en tu ordenador y cuándo lanzas los comandos de la base de datos?"*.
+
+### 🚀 Cómo arrancar el servidor en local (Día a día)
+Para probar tu aplicación mientras programas, **no necesitas hacer migraciones**, solo tienes que levantar el servidor de desarrollo de Django. Abres la terminal en la carpeta de tu proyecto (donde está el archivo `manage.py`) y ejecutas:
+
+```bash
+# Arranca el servidor web local
+python manage.py runserver
+```
+*(Luego abres el navegador y vas a `http://127.0.0.1:8000`)*
+
+### 🗄️ El ciclo de las Migraciones (Solo si tocas la Base de Datos)
+La regla de oro en Django es: **Las migraciones son el sistema de control de versiones de tu Base de Datos. SOLO tienes que usarlas cuando alteras la estructura de las tablas, es decir, cuando tocas el archivo `models.py`.**
+
+### ❌ CUÁNDO NO hacer migraciones (Solo guardas el archivo y recargas la web)
+- **HTML/CSS:** Si cambias colores, botones o añades un `div` en `cv_template.html` o `style.css`.
+- **Lógica de negocio:** Si modificas cómo se descargan los PDFs, añades el CSS de error o cambias el algoritmo de la IA en `views.py`.
+- **Rutas y Formularios:** Si añades una nueva URL en `urls.py` o cambias las validaciones en `forms.py`.
+*En todos estos casos, `runserver` detecta el cambio automáticamente y recarga el código. ¡No hay que tirar ningún comando extra!*
+
+### ✅ CUÁNDO SÍ hacer migraciones
+Solo y exclusivamente cuando modificas el archivo `models.py`. Por ejemplo:
+1. **Crear una nueva tabla:** Añades `class NuevaTabla(models.Model):`
+2. **Añadir una columna:** Agregas `github_token = models.CharField(...)` a un modelo existente.
+3. **Borrar una columna:** Eliminas una línea de código en tu modelo.
+4. **Cambiar un tipo de dato:** Cambias un `IntegerField` por un `CharField`.
+
+### 💻 Los comandos mágicos (Siempre van en pareja)
+Si has tocado `models.py`, tienes que detener el servidor (`Ctrl+C`) y lanzar estos dos comandos en orden:
+
+```bash
+# 1. MAKEMIGRATIONS (El arquitecto)
+# Django lee tu models.py, detecta las diferencias y "escribe un plano" (un script en Python)
+# con los cambios que hay que hacerle a la base de datos. Todavía no ha tocado SQLite.
+python manage.py makemigrations
+
+# 2. MIGRATE (El obrero)
+# Django coge ese plano y ejecuta el SQL real (CREATE TABLE, ALTER TABLE, etc.) 
+# directamente contra tu archivo db.sqlite3. ¡Ahora la base de datos ya está actualizada!
+python manage.py migrate
+
+# 3. Y ahora sí, vuelves a arrancar el servidor
+python manage.py runserver
+```
+
+---
+
 ## 1. HTTP: GET, POST y Query Strings
 
 ### ¿Cuándo haces un GET y cuándo un POST?
