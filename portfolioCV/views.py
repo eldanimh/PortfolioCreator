@@ -1,58 +1,76 @@
-import io
-import json
-import requests
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, Http404
-from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib import messages
-from .models import UserProfile, ContenidoData
-from .forms import RegistroForm, TokensForm, ContenidoForm
+# ─── IMPORTACIONES ─────────────────────────────────────────
+import io        # Módulo para manejar buffers de bytes en memoria (para generar PDFs)
+import json      # Módulo para serializar/deserializar JSON (para el CV profesional)
+import requests  # Librería HTTP para hacer peticiones GET/POST a APIs externas (GitHub, GitLab, OpenAlex)
+from django.shortcuts import render, redirect, get_object_or_404  # Funciones de atajo de Django
+# render: renderiza un template HTML con un contexto (diccionario de variables)
+# redirect: redirige al navegador a otra URL (genera respuesta HTTP 302)
+# get_object_or_404: busca un objeto en la BD o devuelve error 404 si no existe
+from django.http import HttpResponse, Http404  # Clases de respuesta HTTP
+from django.contrib.auth import login, logout, authenticate  # Funciones de autenticación de Django
+# login: crea la sesión del usuario (guarda en django_session y envía cookie sessionid)
+# logout: destruye la sesión (borra de django_session y elimina la cookie)
+# authenticate: verifica usuario+contraseña contra la BD (devuelve User o None)
+from django.contrib.auth.decorators import login_required  # Decorador que protege vistas
+# @login_required: si no hay cookie sessionid válida → redirige a /login/
+from django.contrib.auth.forms import AuthenticationForm  # Formulario de login de Django
+from django.contrib import messages  # Sistema de mensajes flash (se muestran una vez al usuario)
+from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
+from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
 
-# ─── API URLs ───────────────────────────────────────────────
-GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"
-GITHUB_API_URL = "https://api.github.com"
+# ─── URLs base de las APIs externas ────────────────────────
+GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"  # API REST v4 de GitLab URJC
+GITHUB_API_URL = "https://api.github.com"                # API REST v3 de GitHub
 
-# ─── Proxy PythonAnywhere ──────────────────────────────────
+# ─── Configuración de proxy para PythonAnywhere ───────────
+# PythonAnywhere (hosting gratuito) requiere un proxy HTTP para conexiones externas
 import os
 PA_PROXIES = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
+# Si la variable de entorno PYTHONANYWHERE_DOMAIN existe → estamos en la nube → usar proxy
+# Si no existe → estamos en local → no usar proxy (None)
 
 
 # ─── Página principal ──────────────────────────────────────
 def index(request):
     """Página principal con dos apartados: GitLab URJC y GitHub"""
+    # Si el usuario está autenticado (tiene cookie sessionid válida),
+    # recuperamos sus recursos de la BD ordenados por fecha (más reciente primero)
     if request.user.is_authenticated:
         contenidos = ContenidoData.objects.filter(usuario=request.user.username).order_by('-fecha_creacion')
     else:
-        contenidos = []
+        contenidos = []  # Usuario anónimo: no ve recursos
 
+    # Si el método HTTP es POST → el usuario está enviando el formulario para crear un recurso
     if request.method == 'POST':
         if not request.user.is_authenticated:
             messages.error(request, 'Debes iniciar sesión para crear recursos.')
-            return redirect('login')
-        form = ContenidoForm(request.POST)
-        if form.is_valid():
-            contenido = form.save(commit=False)
-            contenido.usuario = request.user
-            contenido.save()
+            return redirect('login')  # Redirige a /login/ (HTTP 302)
+        form = ContenidoForm(request.POST)  # request.POST es un diccionario con los datos del body
+        if form.is_valid():  # Valida que los campos cumplan las restricciones del modelo
+            contenido = form.save(commit=False)  # Crea el objeto PERO no lo guarda aún en la BD
+            contenido.usuario = request.user      # Asignamos el usuario actual antes de guardar
+            contenido.save()                      # AHORA sí se guarda en SQLite (INSERT INTO...)
             messages.success(request, f'Recurso "{contenido.recurso}" creado correctamente.')
-            return redirect('index')
+            return redirect('index')  # Redirige a la misma página (patrón POST-Redirect-GET)
     else:
-        form = ContenidoForm()
+        form = ContenidoForm()  # GET → formulario vacío para mostrar
 
+    # render() combina el template HTML con las variables del contexto y devuelve HTTP 200
     return render(request, 'portfolioCV/index.html', {
-        'contenidos': contenidos,
-        'form': form,
+        'contenidos': contenidos,  # Lista de recursos para el template
+        'form': form,              # Formulario (vacío o con errores)
     })
 
 
 # ─── Detalle de recurso ────────────────────────────────────
 def detalle_recurso(request, recurso):
     """Muestra el contenido de un recurso específico"""
+    # 'recurso' viene de la URL: /<str:recurso>/ (capturado por el conversor de Django)
     try:
+        # Busca en la BD un ContenidoData con ese nombre de recurso
         contenido = ContenidoData.objects.get(recurso=recurso)
     except ContenidoData.DoesNotExist:
+        # Si no existe → devuelve página 404 con código de estado HTTP 404
         return render(request, 'portfolioCV/404.html', {
             'recurso': recurso,
         }, status=404)
@@ -63,28 +81,29 @@ def detalle_recurso(request, recurso):
 
 
 # ─── Eliminar recurso ──────────────────────────────────────
-@login_required
+@login_required  # Solo usuarios autenticados pueden borrar (si no → redirige a /login/)
 def eliminar_recurso(request, recurso):
     """Elimina un recurso de la base de datos"""
+    # get_object_or_404: busca el recurso, si no existe devuelve HTTP 404 automáticamente
     contenido = get_object_or_404(ContenidoData, recurso=recurso)
-    contenido.delete()
+    contenido.delete()  # DELETE FROM contenidodata WHERE recurso='...'
     messages.success(request, f'Recurso "{recurso}" eliminado correctamente.')
-    return redirect('index')
+    return redirect('index')  # Vuelve a la página principal
 
 
 # ─── Autenticación ─────────────────────────────────────────
 def registro_view(request):
-    """Registro de nuevo usuario"""
-    if request.method == 'POST':
-        form = RegistroForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            UserProfile.objects.create(user=user)
-            login(request, user)
+    """Registro de nuevo usuario — POST crea la cuenta, GET muestra el formulario"""
+    if request.method == 'POST':  # El usuario ha enviado el formulario (datos en el body HTTP)
+        form = RegistroForm(request.POST)  # Rellenamos el formulario con los datos del POST
+        if form.is_valid():  # Valida: username único, contraseña segura, contraseñas coinciden
+            user = form.save()  # Crea el User en la BD (INSERT INTO auth_user...)
+            UserProfile.objects.create(user=user)  # Crea su perfil con tokens vacíos
+            login(request, user)  # Inicia sesión automáticamente → crea cookie sessionid
             messages.success(request, '¡Cuenta creada correctamente! Configura tus tokens.')
-            return redirect('configurar_tokens')
+            return redirect('configurar_tokens')  # Redirige a /tokens/ (HTTP 302)
         else:
-            # Mostrar errores específicos en español
+            # Si la validación falla, traducimos los errores de Django al español
             for field, errors in form.errors.items():
                 for error in errors:
                     if 'already exists' in error or 'ya existe' in error:
@@ -100,57 +119,61 @@ def registro_view(request):
                     elif 'didn' in error or 'no coinciden' in error or 'match' in error:
                         messages.error(request, 'Las dos contraseñas no coinciden.')
     else:
-        form = RegistroForm()
+        form = RegistroForm()  # GET → formulario vacío
     return render(request, 'portfolioCV/registro.html', {'form': form})
 
 
 def login_view(request):
-    """Inicio de sesión"""
-    if request.method == 'POST':
+    """Inicio de sesión — verifica credenciales y crea la cookie de sesión"""
+    if request.method == 'POST':  # El usuario envió usuario+contraseña
+        # request.POST.get() lee los datos del BODY de la petición HTTP (no de la URL)
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
         
-        # Comprobar si el usuario existe
+        # Primero comprobamos si el usuario existe en la BD
         from django.contrib.auth.models import User
-        user_exists = User.objects.filter(username=username).exists()
+        user_exists = User.objects.filter(username=username).exists()  # SELECT COUNT(*) WHERE...
         
         if not username or not password:
             messages.error(request, 'Por favor, rellena todos los campos.')
         elif not user_exists:
             messages.error(request, f'No existe ninguna cuenta con el usuario "{username}". ¿Quieres registrarte?')
         else:
-            # El usuario existe, intentamos autenticar
+            # authenticate() verifica el hash de la contraseña contra la BD
+            # Django NUNCA guarda contraseñas en texto plano, usa hashing (pbkdf2_sha256)
             user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                UserProfile.objects.get_or_create(user=user)
+            if user is not None:  # Contraseña correcta
+                login(request, user)  # Crea sesión en django_session + envía cookie sessionid
+                UserProfile.objects.get_or_create(user=user)  # Asegura que tiene perfil
                 messages.success(request, f'¡Bienvenido, {user.username}!')
-                return redirect('index')
+                return redirect('index')  # HTTP 302 → /
             else:
                 messages.error(request, 'Contraseña incorrecta. Inténtalo de nuevo.')
         
         form = AuthenticationForm()
     else:
-        form = AuthenticationForm()
+        form = AuthenticationForm()  # GET → formulario vacío
     return render(request, 'portfolioCV/login.html', {'form': form})
 
 
 def logout_view(request):
-    """Cerrar sesión"""
-    logout(request)
+    """Cerrar sesión — destruye la cookie sessionid y la entrada en django_session"""
+    logout(request)  # Borra la sesión de la BD y la cookie del navegador
     messages.info(request, 'Has cerrado sesión correctamente.')
     return redirect('index')
 
 
 # ─── Configurar tokens ─────────────────────────────────────
-@login_required
+@login_required  # Requiere cookie sessionid válida → si no, redirige a LOGIN_URL (/login/)
 def configurar_tokens(request):
     """Página para configurar los tokens de GitHub y GitLab"""
+    # get_or_create: busca el perfil del usuario, si no existe lo crea (para usuarios de social login)
     profile, created = UserProfile.objects.get_or_create(user=request.user)
-    if request.method == 'POST':
+    if request.method == 'POST':  # El usuario envió el formulario con tokens
+        # instance=profile: indica que estamos EDITANDO un perfil existente (UPDATE), no creando uno nuevo
         form = TokensForm(request.POST, instance=profile)
         if form.is_valid():
-            form.save()
+            form.save()  # UPDATE userprofile SET github_token='...', gitlab_token='...' WHERE user_id=...
             messages.success(request, '¡Tokens actualizados correctamente!')
             return redirect('index')
     else:
@@ -161,38 +184,43 @@ def configurar_tokens(request):
 # ─── GitLab URJC - Repositorios ────────────────────────────
 @login_required
 def gitlab_repos(request):
-    """Lista los repositorios del usuario en GitLab URJC"""
-    profile = get_object_or_404(UserProfile, user=request.user)
+    """Lista los repositorios del usuario en GitLab URJC — petición GET a la API de GitLab"""
+    profile = get_object_or_404(UserProfile, user=request.user)  # Busca el perfil del usuario
 
+    # Verificar que el usuario tiene un token configurado
     if not profile.gitlab_token:
         messages.warning(request, 'Configura tu token de GitLab URJC primero.')
         return redirect('configurar_tokens')
 
+    # Cabecera HTTP de autenticación: GitLab usa PRIVATE-TOKEN (diferente a GitHub que usa Bearer)
     headers = {"PRIVATE-TOKEN": profile.gitlab_token}
     repos = []
     error_msg = None
 
-    # Configuración de proxy para PythonAnywhere
+    # Proxy: necesario solo en PythonAnywhere (hosting free) para acceder a Internet
     proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
 
     try:
+        # Petición GET a la API REST de GitLab: GET /api/v4/projects?owned=True&per_page=50
+        # params se convierten en query string: ?owned=True&per_page=50
         response = requests.get(
-            f"{GITLAB_URJC_URL}/projects",
-            headers=headers,
-            params={"owned": True, "per_page": 50},
-            timeout=10,
-            proxies=proxies
+            f"{GITLAB_URJC_URL}/projects",       # URL del endpoint
+            headers=headers,                      # Cabeceras HTTP (con el token)
+            params={"owned": True, "per_page": 50},  # Query string: solo mis repos, máximo 50
+            timeout=10,                           # Máximo 10 segundos esperando respuesta
+            proxies=proxies                       # Proxy (None en local)
         )
-        if response.status_code == 200:
-            repos = response.json()
+        if response.status_code == 200:   # HTTP 200 OK → éxito
+            repos = response.json()       # Parsea el JSON de la respuesta a lista Python
         else:
             error_msg = f"Error al conectar con GitLab URJC (código {response.status_code}). Verifica tu token."
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as e:  # Error de red (timeout, DNS, etc.)
         error_msg = f"No se pudo conectar con GitLab URJC: {str(e)}"
 
+    # Renderiza el template con la lista de repos (o el mensaje de error)
     return render(request, 'portfolioCV/gitlab_repos.html', {
-        'repos': repos,
-        'error_msg': error_msg,
+        'repos': repos,           # Lista de diccionarios con datos de cada repo
+        'error_msg': error_msg,   # Mensaje de error (None si todo fue bien)
         'platform': 'GitLab URJC',
     })
 
@@ -200,33 +228,36 @@ def gitlab_repos(request):
 # ─── GitHub - Repositorios ─────────────────────────────────
 @login_required
 def github_repos(request):
-    """Lista los repositorios del usuario en GitHub"""
+    """Lista los repositorios del usuario en GitHub — usa Bearer token (diferente a GitLab)"""
     profile = get_object_or_404(UserProfile, user=request.user)
 
     if not profile.github_token:
         messages.warning(request, 'Configura tu token de GitHub primero.')
         return redirect('configurar_tokens')
 
+    # Cabeceras HTTP: GitHub usa "Authorization: Bearer <token>" y el header Accept
+    # para indicar que queremos respuesta en formato JSON v3
     headers = {
-        "Authorization": f"Bearer {profile.github_token}",
-        "Accept": "application/vnd.github.v3+json"
+        "Authorization": f"Bearer {profile.github_token}",     # Token en cabecera Authorization
+        "Accept": "application/vnd.github.v3+json"              # Formato de respuesta deseado
     }
     repos = []
     error_msg = None
 
-    # Configuración de proxy para PythonAnywhere
     proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
 
     try:
+        # GET /user/repos → devuelve los repos del usuario autenticado
+        # Query string: ?per_page=50&sort=updated (los 50 más recientes)
         response = requests.get(
             f"{GITHUB_API_URL}/user/repos",
             headers=headers,
-            params={"per_page": 50, "sort": "updated"},
+            params={"per_page": 50, "sort": "updated"},  # Se convierte en query string en la URL
             timeout=10,
             proxies=proxies
         )
         if response.status_code == 200:
-            repos = response.json()
+            repos = response.json()  # Parsea JSON → lista de diccionarios Python
         else:
             error_msg = f"Error al conectar con GitHub (código {response.status_code}). Verifica tu token."
     except requests.exceptions.RequestException as e:
@@ -242,33 +273,37 @@ def github_repos(request):
 # ─── OpenAlex - Bibliografías ──────────────────────────────
 @login_required
 def openalex_repos(request):
-    """Busca bibliografías e información utilizando OpenAlex API"""
+    """Busca obras científicas en OpenAlex — la búsqueda va por QUERY STRING en GET"""
     profile = get_object_or_404(UserProfile, user=request.user)
+    # request.GET.get('search') → lee el parámetro 'search' de la URL
+    # Ejemplo: /openalex/?search=BabiaXR → query = "BabiaXR"
+    # Esto es la QUERY STRING: los datos van en la URL después del ?
     query = request.GET.get('search', '').strip()
     
     repos = []
     error_msg = None
 
-    if query:
-        url = "https://api.openalex.org/works"
-        params = {"search": query, "per_page": 30}
+    if query:  # Solo busca si hay algo escrito
+        url = "https://api.openalex.org/works"  # Endpoint de la API de OpenAlex
+        params = {"search": query, "per_page": 30}  # Query string: ?search=BabiaXR&per_page=30
         if profile.openalex_token:
-            params["api_key"] = profile.openalex_token
+            params["api_key"] = profile.openalex_token  # API key opcional para evitar rate limits
             
-        # Configuración de proxy para PythonAnywhere
         proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
             
         try:
             response = requests.get(url, params=params, timeout=10, proxies=proxies)
             if response.status_code == 200:
-                data = response.json()
-                results = data.get('results', [])
+                data = response.json()  # La respuesta viene como JSON
+                results = data.get('results', [])  # Lista de obras científicas
                 for work in results:
+                    # Extraer nombres de autores de la estructura anidada
                     authors = ", ".join([a.get('author', {}).get('display_name', '') for a in work.get('authorships', [])])
+                    # Normalizar la estructura para que sea compatible con el template de repos
                     repos.append({
-                        'id': work.get('id', '').split('/')[-1],
-                        'name': work.get('title', 'Sin título')[:100],
-                        'description': authors,
+                        'id': work.get('id', '').split('/')[-1],  # Extraer solo el ID (última parte de la URL)
+                        'name': work.get('title', 'Sin título')[:100],  # Título truncado a 100 chars
+                        'description': authors,          # Los autores como descripción
                         'language': work.get('language', 'unknown'),
                         'visibility': work.get('type', 'work').capitalize(),
                         'created_at': work.get('publication_year'),
@@ -282,12 +317,12 @@ def openalex_repos(request):
         'repos': repos,
         'error_msg': error_msg,
         'platform': 'OpenAlex',
-        'query': query
+        'query': query  # Devolvemos la búsqueda para mostrarla en el input del template
     })
 
 @login_required
 def openalex_repo_detalle(request, work_id):
-    """Muestra detalle de una obra científica y permite generar CV"""
+    """Detalle de una obra científica — work_id viene de la URL: /openalex/<work_id>/"""
     profile = get_object_or_404(UserProfile, user=request.user)
     repo = None
     languages = {}
@@ -299,9 +334,11 @@ def openalex_repo_detalle(request, work_id):
         params["api_key"] = profile.openalex_token
         
     try:
+        # GET a la API de OpenAlex: obtiene todos los datos de una obra específica
         resp = requests.get(url, params=params, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
-            work = resp.json()
+            work = resp.json()  # Parsea el JSON de la respuesta
+            # Normalizamos la estructura para reutilizar el mismo template que GitHub/GitLab
             repo = {
                 'name': work.get('title', 'Sin título'),
                 'description': f"Publicado en {work.get('publication_year', 'Desconocido')}",
@@ -309,13 +346,16 @@ def openalex_repo_detalle(request, work_id):
                 'created_at': work.get('publication_date'),
                 'default_branch': work.get('type', 'N/A')
             }
+            # Los 'topics' de OpenAlex se usan como si fueran 'lenguajes' de programación
+            # para reutilizar el mismo template de porcentajes
             topics = work.get('topics', [])
             total_score = sum([t.get('score', 0) for t in topics])
             if total_score > 0:
                 for t in topics:
+                    # Calculamos el porcentaje de cada topic sobre el total
                     languages[t.get('display_name')] = int((t.get('score', 0) / total_score) * 100)
             else:
-                languages = {work.get('language', 'N/A'): 100}
+                languages = {work.get('language', 'N/A'): 100}  # Fallback: idioma de la obra
         else:
             error_msg = f"Obra no encontrada (Error {resp.status_code})"
     except requests.exceptions.RequestException as e:
@@ -334,23 +374,23 @@ def openalex_repo_detalle(request, work_id):
 # ─── Detalle de repo GitLab ────────────────────────────────
 @login_required
 def gitlab_repo_detalle(request, repo_id):
-    """Muestra detalle de un repo de GitLab y permite generar CV"""
+    """Detalle de un repo GitLab — repo_id (entero) viene de la URL: /gitlab/<int:repo_id>/"""
     profile = get_object_or_404(UserProfile, user=request.user)
-    headers = {"PRIVATE-TOKEN": profile.gitlab_token}
+    headers = {"PRIVATE-TOKEN": profile.gitlab_token}  # Auth de GitLab
     repo = None
     languages = {}
     error_msg = None
 
     try:
-        # Obtener info del proyecto
+        # 1ª petición: GET /projects/{id} → info general del repo (nombre, descripción, URL)
         resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
 
-        # Obtener lenguajes
+        # 2ª petición: GET /projects/{id}/languages → porcentaje de cada lenguaje
         resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
-            languages = resp_lang.json()
+            languages = resp_lang.json()  # Ej: {"Python": 65.2, "JavaScript": 34.8}
     except requests.exceptions.RequestException as e:
         error_msg = str(e)
 
@@ -366,7 +406,7 @@ def gitlab_repo_detalle(request, repo_id):
 # ─── Detalle de repo GitHub ────────────────────────────────
 @login_required
 def github_repo_detalle(request, owner, repo_name):
-    """Muestra detalle de un repo de GitHub y permite generar CV"""
+    """Detalle de un repo GitHub — owner y repo_name vienen de /github/<owner>/<repo_name>/"""
     profile = get_object_or_404(UserProfile, user=request.user)
     headers = {
         "Authorization": f"Bearer {profile.github_token}",
@@ -400,7 +440,7 @@ def github_repo_detalle(request, owner, repo_name):
 # ─── Generar CV en PDF ─────────────────────────────────────
 @login_required
 def generar_cv_gitlab(request, repo_id):
-    """Genera un CV en PDF a partir de un repo de GitLab URJC"""
+    """Genera un CV en PDF de un repo GitLab. Hace 4 llamadas API para recopilar todos los datos."""
     profile = get_object_or_404(UserProfile, user=request.user)
     headers = {"PRIVATE-TOKEN": profile.gitlab_token}
 
@@ -415,17 +455,19 @@ def generar_cv_gitlab(request, repo_id):
         
         default_branch = repo.get('default_branch', 'main')
 
+        # 2ª llamada: obtener lenguajes
         resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
-        # Árbol de archivos
+        # 3ª llamada: obtener el árbol de archivos (recursive=true para subcarpetas)
         resp_tree = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES)
         if resp_tree.status_code == 200:
+            # Filtramos solo los archivos (tipo 'blob'), ignorando carpetas ('tree')
             tree = [item['path'] for item in resp_tree.json() if item.get('type') == 'blob']
         
-        # README
-        # Intentamos obtenerlo asumiendo que se llama README.md
+        # 4ª llamada: obtener el README
+        # Intentamos obtenerlo asumiendo que se llama README.md en la rama principal
         resp_readme = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
@@ -433,14 +475,15 @@ def generar_cv_gitlab(request, repo_id):
             readme = "No se encontró README.md u ocurrió un error."
 
     except requests.exceptions.RequestException:
-        pass
+        pass  # Si falla algo, pasamos variables vacías a _generar_pdf y allí se gestiona
 
+    # Delega la creación real del PDF a la función común _generar_pdf
     return _generar_pdf(request.user, repo, languages, tree, readme, 'GitLab URJC')
 
 
 @login_required
 def generar_cv_github(request, owner, repo_name):
-    """Genera un CV en PDF a partir de un repo de GitHub"""
+    """Genera un CV en PDF de un repo GitHub. Hace 4 llamadas API (info, lenguajes, árbol, README)."""
     profile = get_object_or_404(UserProfile, user=request.user)
     headers = {
         "Authorization": f"Bearer {profile.github_token}",
@@ -458,18 +501,20 @@ def generar_cv_github(request, owner, repo_name):
 
         default_branch = repo.get('default_branch', 'main')
 
+        # 2ª llamada: Lenguajes
         resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
-        # Árbol de archivos
+        # 3ª llamada: Árbol de archivos (API de Git Data)
         resp_tree = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/git/trees/{default_branch}", headers=headers, params={"recursive": "1"}, timeout=10, proxies=PA_PROXIES)
         if resp_tree.status_code == 200:
-             # filtramos para obtener solo paths de archivos que no sean subárboles (blob)
+             # Filtramos para obtener solo paths de archivos que no sean subárboles (blob)
             tree_data = resp_tree.json().get('tree', [])
             tree = [item['path'] for item in tree_data if item.get('type') == 'blob']
             
-        # README formato RAW
+        # 4ª llamada: README (formato RAW)
+        # Cambiamos el header Accept para pedir el README en raw markdown, no en JSON base64
         headers_readme = {
             "Authorization": f"Bearer {profile.github_token}",
             "Accept": "application/vnd.github.v3.raw"
@@ -489,7 +534,7 @@ def generar_cv_github(request, owner, repo_name):
 
 @login_required
 def generar_cv_openalex(request, work_id):
-    """Genera un PDF con formato de artículo a partir de OpenAlex usando la estructura de _generar_pdf"""
+    """Genera PDF de una obra de OpenAlex usando la misma plantilla que los repositorios."""
     profile = get_object_or_404(UserProfile, user=request.user)
     
     url = f"https://api.openalex.org/works/{work_id}"
@@ -513,12 +558,16 @@ def generar_cv_openalex(request, work_id):
                 'last_activity_at': work.get('publication_date', 'N/A')
             }
             
+            # OpenAlex devuelve el Abstract (resumen) de forma peculiar (Inverted Index)
+            # Viene como un diccionario: {"palabra": [posicion1, posicion2]}
+            # Hay que reconstruir el texto ordenando las palabras por su posición
             abs_idx = work.get('abstract_inverted_index')
             if abs_idx:
                 words = {}
                 for word, pos_list in abs_idx.items():
                     for pos in pos_list:
                         words[pos] = word
+                # Une las palabras en el orden de las posiciones (sorted)
                 abstract = " ".join([words[p] for p in sorted(words.keys())])
                 readme = f"## Resumen (Abstract)\n\n{abstract}\n\n"
             else:
@@ -546,25 +595,27 @@ def generar_cv_openalex(request, work_id):
     return _generar_pdf(request.user, repo, languages, tree, readme, 'OpenAlex')
 
 def _generar_pdf(user, repo, languages, tree, readme, platform):
-    """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub."""
+    """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub.
+    Recibe los datos unificados (da igual si vienen de GitHub o GitLab) y los renderiza en un PDF."""
     from django.template.loader import render_to_string
     import markdown
     from playwright.sync_api import sync_playwright
 
-    buffer = io.BytesIO()
+    buffer = io.BytesIO()  # Creamos un archivo temporal en la memoria RAM
     
-    # Preprocesar Markdown
+    # 1. Preprocesar Markdown
+    # Convertimos el texto del README (Markdown) a código HTML para que el PDF lo entienda
     readme_html = ""
     if readme:
         readme_html = markdown.markdown(
             readme, 
-            extensions=['extra', 'codehilite', 'tables', 'fenced_code']
+            extensions=['extra', 'codehilite', 'tables', 'fenced_code']  # Soportar tablas, bloques de código, etc.
         )
     
-    # Procesar lenguajes
+    # 2. Procesar lenguajes (calcular porcentajes)
     processed_languages = []
     if languages:
-        total = sum(languages.values())
+        total = sum(languages.values())  # Suma total de bytes/líneas de código
         for lang, valor in languages.items():
             if isinstance(valor, (int, float)) and total > 0:
                 pct = (valor / total * 100) if total > 100 else valor
@@ -572,14 +623,15 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
                 pct = 0
             processed_languages.append({'name': lang, 'pct': pct})
             
-    # Ordenar árbol de ficheros
+    # 3. Ordenar árbol de ficheros alfabéticamente
     tree_sorted = sorted(tree) if tree else []
             
-    # Contexto para el template
+    # 4. Contexto para el template
+    # Preparamos todas las variables que se inyectarán en el HTML
     context = {
         'user': user,
         'proyecto': repo,
-        'url': repo.get('web_url', repo.get('html_url', 'N/A')),
+        'url': repo.get('web_url', repo.get('html_url', 'N/A')),  # GitLab usa web_url, GitHub usa html_url
         'act_date': repo.get('last_activity_at', repo.get('updated_at', 'N/A')),
         'platform': platform,
         'processed_languages': processed_languages,
@@ -587,22 +639,24 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
         'readme_html': readme_html,
     }
 
+    # render_to_string() genera el HTML completo en memoria como un string de texto
     html_string = render_to_string('portfolioCV/cv_template.html', context)
     
-    # Render PDF using Headless Chromium
+    # 5. Renderizar el PDF usando Headless Chromium (Playwright)
+    # Abre un navegador oculto, carga el HTML y le pide imprimir a PDF
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.set_content(html_string, wait_until='networkidle')
+        page.set_content(html_string, wait_until='networkidle')  # Espera a que carguen imágenes/CSS
         
-        # Header/Footer content para Playwright (debe ser HTML)
+        # Header/Footer content para Playwright (debe ser HTML inyectado en el PDF)
         repo_name = repo.get('name', repo.get('path', 'Repositorio'))
         header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">Portfolio CV — {user.username} — {platform}</div>'
         footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
         
         pdf_bytes = page.pdf(
             format="A4",
-            print_background=True,
+            print_background=True,  # Imprimir colores de fondo y CSS
             margin={'top': '25mm', 'bottom': '25mm', 'left': '15mm', 'right': '15mm'},
             display_header_footer=True,
             header_template=header_html,
@@ -610,23 +664,32 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
         )
         browser.close()
 
+    # Escribir los bytes generados por el navegador en nuestro buffer de memoria
     buffer.write(pdf_bytes)
-    buffer.seek(0)
+    buffer.seek(0)  # Rebobinar el buffer al principio para leerlo
     
+    # 6. Devolver respuesta HTTP con el PDF
     filename = f"CV_{repo_name}_{platform}.pdf".replace(" ", "_")
-    response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response = HttpResponse(buffer, content_type='application/pdf')  # Tipo MIME de PDF
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'  # Descargar como fichero adjunto
     return response
 
 
 # ─── CV Profesional Unificado ──────────────────────────────
 def _get_cv_data(user):
+    """
+    Recupera el estado de la 'cesta' del CV.
+    Guarda los datos serializados como texto JSON en la tabla ContenidoData,
+    usando un recurso especial con nombre 'cv_profesional_username'.
+    """
     recurso_name = f"cv_profesional_{user.username}"
+    # Busca el registro o lo crea vacío si no existe
     contenido_obj, created = ContenidoData.objects.get_or_create(
         recurso=recurso_name,
         defaults={'usuario': user.username, 'contenido': '{}'}
     )
     try:
+        # Deserializar JSON (texto a diccionario Python)
         data = json.loads(contenido_obj.contenido)
     except json.JSONDecodeError:
         data = {}
@@ -634,6 +697,7 @@ def _get_cv_data(user):
     if not isinstance(data, dict):
         data = {}
     
+    # Estructura inicial obligatoria
     if 'personal_info' not in data:
         data['personal_info'] = {'photo': '', 'name': '', 'linkedin': '', 'phone': '', 'email': '', 'about': ''}
     if 'items' not in data:
@@ -643,25 +707,29 @@ def _get_cv_data(user):
 
 @login_required
 def cv_builder(request):
-    """Renderiza el panel de control del CV unificado"""
-    contenido_obj, data = _get_cv_data(request.user)
+    """Renderiza el panel de control del CV unificado (la vista de la 'cesta')"""
+    contenido_obj, data = _get_cv_data(request.user)  # Lee la base de datos
     
     if request.method == 'POST':
+        # El usuario ha enviado el formulario de "Información Personal"
         import base64
-        if 'photo' in request.FILES:
+        if 'photo' in request.FILES:  # Si ha subido una foto
             try:
                 photo_file = request.FILES['photo']
+                # Convierte la foto a Base64: un string gigante que la incrusta directamente en el HTML
                 photo_b64 = base64.b64encode(photo_file.read()).decode('utf-8')
                 data['personal_info']['photo'] = f"data:{photo_file.content_type};base64,{photo_b64}"
             except Exception:
                 pass
         
+        # Guarda los textos
         data['personal_info']['name'] = request.POST.get('name', '').strip()
         data['personal_info']['linkedin'] = request.POST.get('linkedin', '').strip()
         data['personal_info']['phone'] = request.POST.get('phone', '').strip()
         data['personal_info']['email'] = request.POST.get('email', '').strip()
         data['personal_info']['about'] = request.POST.get('about', '').strip()
         
+        # Vuelve a convertir el diccionario a texto JSON y lo guarda en la BD
         contenido_obj.contenido = json.dumps(data)
         contenido_obj.save()
         messages.success(request, 'Información del CV guardada correctamente.')
@@ -673,33 +741,35 @@ def cv_builder(request):
 
 @login_required
 def agregar_al_cv(request):
-    """Agrega un repositorio u obra a la cesta del CV (espera un POST)"""
+    """Agrega un repositorio u obra a la cesta del CV (se llama desde un formulario POST)"""
     if request.method == 'POST':
+        # Se reciben los datos básicos del repositorio para añadirlos a la 'cesta'
         platform = request.POST.get('platform')
         item_id = request.POST.get('id')
         name = request.POST.get('name')
         
         if platform and item_id and name:
             contenido_obj, data = _get_cv_data(request.user)
-            # Evitar duplicados
+            # Evitar duplicados (no añadir la misma repo dos veces)
             if not any(str(item['id']) == str(item_id) and item['platform'] == platform for item in data['items']):
-                data['items'].append({
+                data['items'].append({  # Añadir al array de JSON
                     'platform': platform,
                     'id': item_id,
                     'name': name
                 })
-                contenido_obj.contenido = json.dumps(data)
+                contenido_obj.contenido = json.dumps(data)  # Guardar
                 contenido_obj.save()
                 messages.success(request, f'"{name}" añadido a tu CV Profesional.')
             else:
                 messages.info(request, f'"{name}" ya estaba en tu CV Profesional.')
                 
+        # Vuelve a la página anterior (HTTP Referer) o al CV Builder si no hay
         return redirect(request.META.get('HTTP_REFERER', 'cv_builder'))
     return redirect('index')
 
 @login_required
 def agregar_resumen_ia_al_cv(request):
-    """Agrega un texto generado por IA a la cesta del CV"""
+    """Agrega un texto generado por IA a la cesta del CV como un nuevo bloque"""
     import uuid
     if request.method == 'POST':
         content = request.POST.get('content')
@@ -707,9 +777,10 @@ def agregar_resumen_ia_al_cv(request):
         
         if content and item_name:
             contenido_obj, data = _get_cv_data(request.user)
+            # A diferencia de repos, se pueden añadir varios resúmenes IA (tienen UUID aleatorio)
             data['items'].append({
                 'platform': 'IA Summary',
-                'id': str(uuid.uuid4()),
+                'id': str(uuid.uuid4()),  # Genera un ID único para poder borrarlo luego
                 'name': f'Resumen IA - {item_name}',
                 'content': content
             })
@@ -722,15 +793,15 @@ def agregar_resumen_ia_al_cv(request):
 
 @login_required
 def eliminar_del_cv(request):
-    """Elimina un ítem específico del CV"""
+    """Elimina un ítem específico de la cesta del CV (por su índice en el array JSON)"""
     if request.method == 'POST':
-        item_uuid = request.POST.get('index')
+        item_uuid = request.POST.get('index')  # El botón de borrar envía el índice numérico
         try:
             index = int(item_uuid)
             contenido_obj, data = _get_cv_data(request.user)
             if 0 <= index < len(data['items']):
-                removed = data['items'].pop(index)
-                contenido_obj.contenido = json.dumps(data)
+                removed = data['items'].pop(index)  # Elimina el ítem de esa posición
+                contenido_obj.contenido = json.dumps(data)  # Guarda la cesta modificada
                 contenido_obj.save()
                 messages.success(request, f'"{removed["name"]}" eliminado de tu CV.')
         except (ValueError, TypeError):
@@ -740,10 +811,15 @@ def eliminar_del_cv(request):
 
 @login_required
 def descargar_cv_completo(request):
-    """Compila y descarga el CV profesional con todos los ítems agregados"""
+    """
+    Compila el CV profesional.
+    Por cada ítem en la cesta, hace una llamada a su API correspondiente para obtener
+    datos actualizados (descripción, lenguaje) y renderiza el PDF/HTML unificado.
+    """
     _, data = _get_cv_data(request.user)
     profile = get_object_or_404(UserProfile, user=request.user)
     
+    # 1. Enriquecer los datos: descargar info de cada repo en tiempo real
     enriched_items = []
     for item in data.get('items', []):
         try:
@@ -779,10 +855,11 @@ def descargar_cv_completo(request):
             
             enriched_items.append(nuevo_item)
         except Exception:
-            enriched_items.append(item)
+            enriched_items.append(item)  # Si falla, añade el ítem original sin enriquecer
             
     data['items'] = enriched_items
             
+    # 2. Descargar como HTML si lo pide el botón (útil cuando Playwright falla en PythonAnywhere)
     if request.GET.get('format') == 'html':
         from django.template.loader import render_to_string
         import markdown
@@ -791,7 +868,7 @@ def descargar_cv_completo(request):
         else:
             data['personal_info']['about_html'] = ""
             
-        # Parse IA Summaries markdown for HTML view
+        # Parsear Markdown de los resúmenes de IA
         for item in data['items']:
             if item.get('platform') == 'IA Summary':
                 item['content_html'] = markdown.markdown(item.get('content', ''), extensions=['fenced_code', 'tables'])
@@ -802,24 +879,26 @@ def descargar_cv_completo(request):
         response['Content-Disposition'] = 'attachment; filename="cv_profesional.html"'
         return response
         
+    # 3. Descargar como PDF (comportamiento por defecto)
     return _generar_pdf_completo(request.user, data)
 
 
+# ─── Integración Inteligencia Artificial (Gemini/Local) ────────
 @login_required
 def generar_resumen_gemini(request):
-    """Genera un resumen según el tipo de CV seleccionado"""
+    """Página intermedia que muestra el formulario de chat para la IA"""
     if request.method != 'POST':
         return redirect('index')
 
     platform = request.POST.get('platform', '')
     item_id = request.POST.get('id', '')
-    cv_type = request.POST.get('cv_type', 'extenso')
+    cv_type = request.POST.get('cv_type', 'extenso')  # extenso, una_pagina, tecnologia, tfg
     item_name = request.POST.get('name', 'Proyecto')
-    llm_model = request.POST.get('llm_model', 'nvidia-gemma')
-
+    llm_model = request.POST.get('llm_model', 'nvidia-gemma')  # local o nube
 
     cv_type_labels = {'extenso': 'CV Extenso', 'una_pagina': 'CV de Una Página', 'tecnologia': 'CV de Tecnología', 'tfg': 'CV de TFG'}
 
+    # Devuelve el HTML de gemini_resumen que, mediante JavaScript, llamará a la vista de streaming
     return render(request, 'portfolioCV/gemini_resumen.html', {
         'platform': platform,
         'item_id': item_id,
@@ -835,7 +914,10 @@ from django.http import StreamingHttpResponse
 
 @login_required
 def stream_resumen_gemini(request):
-    """Vista de streaming para devolver chunks de texto"""
+    """
+    Vista de streaming para devolver chunks (trozos) de texto de la IA en tiempo real.
+    Esta técnica evita el error de Timeout en PythonAnywhere y crea el efecto "máquina de escribir".
+    """
     if request.method != 'POST':
         return HttpResponse("Method not allowed", status=405)
 
@@ -848,7 +930,8 @@ def stream_resumen_gemini(request):
     llm_model = request.POST.get('llm_model', 'nvidia-gemma')
 
     def event_stream():
-        # Recopilar contenido del repo/obra
+        """Generador en Python (yield): va devolviendo texto a medida que la IA lo genera"""
+        # 1. Recopilar contenido del repo/obra descargándolo de su API original
         contenido_texto = f"Proyecto: {item_name}\nPlataforma: {platform}\n"
         
         try:
@@ -902,6 +985,7 @@ def stream_resumen_gemini(request):
             yield f"Error al recuperar datos del repositorio: {str(e)}"
             return
 
+        # 2. Configurar el Prompt (instrucción) base según el tipo de CV pedido
         prompts_map = {
             'extenso': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un CV/portfolio EXTENSO y detallado a partir de este proyecto. Incluye secciones: Resumen ejecutivo, Descripción del proyecto, Tecnologías utilizadas, Estructura (DEBES incluir obligatoriamente el árbol de directorios con los archivos ordenados), Competencias demostradas y Conclusiones. Sé completo y profesional.",
             'una_pagina': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un CV/portfolio CONCISO de UNA SOLA PÁGINA. Máximo 300 palabras. Incluye solo: Resumen breve, Tecnologías clave, y Logro principal. Sé directo y profesional.",
@@ -913,16 +997,18 @@ def stream_resumen_gemini(request):
 
         try:
             if llm_model == 'local':
+                # --- OPCIÓN 1: LLM LOCAL (LM STUDIO) ---
+                # Petición a un servidor de IA local ejecutándose en el ordenador (ej: Qwen, Llama)
                 import json
                 if not profile.lm_studio_url:
                     yield "Error: Configura tu URL de LM Studio Local en los tokens."
                     return
                 url = f"{profile.lm_studio_url.rstrip('/')}/v1/chat/completions"
                 payload = {
-                    "model": "qwen2.5-7b-instruct",
+                    "model": "qwen2.5-7b-instruct",  # Modelo local usado
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.7,
-                    "stream": True
+                    "stream": True  # IMPORTANTE: pedimos respuesta en streaming
                 }
                 resp = requests.post(url, json=payload, stream=True, timeout=180, proxies=PA_PROXIES)
                 if resp.status_code == 200:
@@ -943,12 +1029,14 @@ def stream_resumen_gemini(request):
                 else:
                     yield f"\n\nError de LM Studio ({resp.status_code}): {resp.text}"
             else:
+                # --- OPCIÓN 2: LLM NUBE (NVIDIA GEMMA) ---
+                # Usamos la librería oficial de OpenAI (porque NVIDIA usa API compatible)
                 from openai import OpenAI
                 if not profile.nvidia_api_key:
                     yield "Error: Configura tu API Key de NVIDIA en los tokens."
                     return
                 
-                # Configuración específica para PythonAnywhere (Free Tier requiere proxy)
+                # Configuración específica para PythonAnywhere (Free Tier requiere proxy para el cliente HTTP)
                 import httpx
                 if PA_PROXIES:
                     http_client = httpx.Client(proxy=PA_PROXIES["http"])
@@ -961,26 +1049,34 @@ def stream_resumen_gemini(request):
                   http_client=http_client
                 )
                 
+                # Petición a NVIDIA
                 response = client.chat.completions.create(
                   model="google/gemma-2-2b-it",
                   messages=[{"role":"user", "content": prompt}],
                   temperature=0.2,
                   top_p=0.7,
                   max_tokens=2048,
-                  stream=True
+                  stream=True  # IMPORTANTE: activa el streaming
                 )
                 
+                # Bucle: a medida que NVIDIA envía fragmentos (chunks), hacemos yield al navegador
                 for chunk in response:
                     if chunk.choices and chunk.choices[0].delta.content is not None:
                         yield chunk.choices[0].delta.content
         except Exception as e:
             yield f"\n\nError al generar resumen con IA: {str(e)}"
 
+    # Retornamos el StreamingHttpResponse, que mantiene la conexión HTTP abierta
+    # y va enviando los textos según se ejecutan los "yield" en event_stream()
     return StreamingHttpResponse(event_stream(), content_type='text/plain; charset=utf-8')
 
 
 def _generar_pdf_completo(user, cv_data):
-    """Generador subyacente de PDF para el CV Unificado usando Playwright"""
+    """
+    Generador del PDF final para el CV Unificado.
+    Carga todos los datos de la cesta, preprocesa los resúmenes IA (Markdown a HTML),
+    los pasa por un template y luego captura el PDF usando Playwright.
+    """
     from django.template.loader import render_to_string
     import markdown
     try:

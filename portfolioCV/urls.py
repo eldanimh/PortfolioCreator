@@ -1,45 +1,50 @@
+# Importamos path para definir rutas URL
 from django.urls import path
+# Importamos las vistas de nuestra app
 from . import views
 
+# Lista de TODAS las URLs de la app portfolioCV
+# Django recorre esta lista de ARRIBA a ABAJO buscando coincidencias
 urlpatterns = [
-    # Página principal
+    # ─── Página principal (/): muestra GitLab, GitHub, OpenAlex ───
     path('', views.index, name='index'),
 
-    # Autenticación
-    path('registro/', views.registro_view, name='registro'),
-    path('login/', views.login_view, name='login'),
-    path('logout/', views.logout_view, name='logout'),
+    # ─── Autenticación ─────────────────────────────────────────────
+    path('registro/', views.registro_view, name='registro'),       # Formulario de registro
+    path('login/', views.login_view, name='login'),                # Formulario de login
+    path('logout/', views.logout_view, name='logout'),             # Cerrar sesión
 
-    # Configuración de tokens
+    # ─── Configuración de tokens de API ────────────────────────────
     path('tokens/', views.configurar_tokens, name='configurar_tokens'),
 
-    # GitLab URJC
-    path('gitlab/', views.gitlab_repos, name='gitlab_repos'),
-    path('gitlab/<int:repo_id>/', views.gitlab_repo_detalle, name='gitlab_repo_detalle'),
-    path('gitlab/<int:repo_id>/cv/', views.generar_cv_gitlab, name='generar_cv_gitlab'),
+    # ─── GitLab URJC ──────────────────────────────────────────────
+    path('gitlab/', views.gitlab_repos, name='gitlab_repos'),                          # Lista todos los repos
+    path('gitlab/<int:repo_id>/', views.gitlab_repo_detalle, name='gitlab_repo_detalle'),  # Detalle de un repo (ID numérico)
+    path('gitlab/<int:repo_id>/cv/', views.generar_cv_gitlab, name='generar_cv_gitlab'),   # Descargar PDF de ese repo
 
-    # GitHub
-    path('github/', views.github_repos, name='github_repos'),
-    path('github/<str:owner>/<str:repo_name>/', views.github_repo_detalle, name='github_repo_detalle'),
-    path('github/<str:owner>/<str:repo_name>/cv/', views.generar_cv_github, name='generar_cv_github'),
+    # ─── GitHub ────────────────────────────────────────────────────
+    path('github/', views.github_repos, name='github_repos'),                                       # Lista repos
+    path('github/<str:owner>/<str:repo_name>/', views.github_repo_detalle, name='github_repo_detalle'),  # Detalle: /github/eldanimh/TeoriaLTAW/
+    path('github/<str:owner>/<str:repo_name>/cv/', views.generar_cv_github, name='generar_cv_github'),   # PDF de ese repo
 
-    # OpenAlex API
-    path('openalex/', views.openalex_repos, name='openalex_repos'),
-    path('openalex/<str:work_id>/', views.openalex_repo_detalle, name='openalex_repo_detalle'),
-    path('openalex/<str:work_id>/cv/', views.generar_cv_openalex, name='generar_cv_openalex'),
+    # ─── OpenAlex API (búsqueda de bibliografía) ──────────────────
+    path('openalex/', views.openalex_repos, name='openalex_repos'),                          # Buscador con query string ?search=
+    path('openalex/<str:work_id>/', views.openalex_repo_detalle, name='openalex_repo_detalle'),  # Detalle de una obra
+    path('openalex/<str:work_id>/cv/', views.generar_cv_openalex, name='generar_cv_openalex'),   # PDF de esa obra
 
-    # CV Profesional Builder
-    path('mi-cv/', views.cv_builder, name='cv_builder'),
-    path('mi-cv/add/', views.agregar_al_cv, name='agregar_al_cv'),
-    path('mi-cv/add-ia/', views.agregar_resumen_ia_al_cv, name='agregar_resumen_ia_al_cv'),
-    path('mi-cv/remove/', views.eliminar_del_cv, name='eliminar_del_cv'),
-    path('mi-cv/descargar/', views.descargar_cv_completo, name='descargar_cv_completo'),
+    # ─── CV Profesional Builder (cesta de proyectos) ──────────────
+    path('mi-cv/', views.cv_builder, name='cv_builder'),                                    # Panel del constructor de CV
+    path('mi-cv/add/', views.agregar_al_cv, name='agregar_al_cv'),                          # POST: añadir repo al CV
+    path('mi-cv/add-ia/', views.agregar_resumen_ia_al_cv, name='agregar_resumen_ia_al_cv'), # POST: añadir resumen IA al CV
+    path('mi-cv/remove/', views.eliminar_del_cv, name='eliminar_del_cv'),                   # POST: quitar item del CV
+    path('mi-cv/descargar/', views.descargar_cv_completo, name='descargar_cv_completo'),     # GET: descargar PDF/HTML del CV
 
-    # Gemini AI
-    path('gemini/resumen/', views.generar_resumen_gemini, name='generar_resumen_gemini'),
-    path('gemini/stream/', views.stream_resumen_gemini, name='stream_resumen_gemini'),
+    # ─── Inteligencia Artificial (NVIDIA/LM Studio) ───────────────
+    path('gemini/resumen/', views.generar_resumen_gemini, name='generar_resumen_gemini'),    # POST: página del resumen IA
+    path('gemini/stream/', views.stream_resumen_gemini, name='stream_resumen_gemini'),       # POST: streaming de texto IA
 
-    # Recursos genéricos (debe ir al final para no interferir con las rutas anteriores)
-    path('<str:recurso>/eliminar/', views.eliminar_recurso, name='eliminar_recurso'),
-    path('<str:recurso>/', views.detalle_recurso, name='detalle_recurso'),
+    # ─── Recursos genéricos (DEBEN ir AL FINAL) ──────────────────
+    # <str:recurso> captura CUALQUIER texto → si fuera antes, interceptaría /gitlab/, /github/, etc.
+    path('<str:recurso>/eliminar/', views.eliminar_recurso, name='eliminar_recurso'),  # Borrar recurso
+    path('<str:recurso>/', views.detalle_recurso, name='detalle_recurso'),             # Ver detalle de recurso
 ]
