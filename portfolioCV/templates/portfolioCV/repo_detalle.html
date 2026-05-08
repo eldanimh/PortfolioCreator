@@ -173,8 +173,11 @@
             <div style="margin-top: 1.5rem;">
                 <label for="llm_model" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: #24292f;">Elige el modelo de IA:</label>
                 <select name="llm_model" id="llm_model" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d0d7de; font-size: 16px;">
-                    <option value="nvidia-gemma">☁️ NVIDIA Gemma 2 2B IT</option>
-                    <option value="local">🧠 Local LM Studio (qwen2.5-7b-instruct)</option>
+                    {% if 'pythonanywhere' in request.get_host %}
+                        <option value="nvidia-gemma">☁️ NVIDIA Gemma 2 2B IT</option>
+                    {% else %}
+                        <option value="local">🧠 Local LM Studio (Personalizado por IP)</option>
+                    {% endif %}
                 </select>
             </div>
 
