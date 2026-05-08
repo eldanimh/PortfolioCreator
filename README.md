@@ -3,11 +3,11 @@
 ## Datos
 
 * Nombre: Daniel Martín Hurtado
-* Titulación: GISAM, Grado en Ingeniería Audiovisuales y Multimedia
+* Titulación: GISAM, Grado en Ingeniería en Sistemas Audiovisuales y Multimedia
 * Cuenta en laboratorios: eldanimh
 * Cuenta URJC: d.martinh.2021@alumnos.urjc.es
 * Vídeo básico (URL): [VÍDEO BÁSICO](https://youtu.be/mNSdh4ArwdQ)
-* Vídeo parte opcional (URL): [ENLACE AL VÍDEO AQUÍ] ❌
+* Vídeo parte opcional (URL): [VÍDEO PARTE OPCIONAL](https://youtu.be/COsI5Ajd0cg)
 * Despliegue (URL): [ENLACE A PYTHONANYWHERE/RENDER](https://eldanimh.pythonanywhere.com)
 * Usuarios y contraseñas: testuser / testpassword123 (también se puede iniciar sesión con GitHub o Google)
 * Cuenta Admin Site: admin / ovVf0YtxSpZGhIK
