@@ -128,12 +128,11 @@ class ExternalAPITests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='apiuser', password='password123')
-        self.profile = UserProfile.objects.create(
-            user=self.user,
-            github_token='gh_fake',
-            gitlab_token='gl_fake',
-            openalex_token='oa_fake'
-        )
+        self.profile = UserProfile.objects.get(user=self.user)
+        self.profile.github_token = 'gh_fake'
+        self.profile.gitlab_token = 'gl_fake'
+        self.profile.openalex_token = 'oa_fake'
+        self.profile.save()
         self.client.login(username='apiuser', password='password123')
 
     @patch('portfolioCV.views.requests.get')
@@ -182,10 +181,9 @@ class TestCVBuilder(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='cvuser', password='password123')
-        self.profile = UserProfile.objects.create(
-            user=self.user,
-            nvidia_api_key='nv_fake'
-        )
+        self.profile = UserProfile.objects.get(user=self.user)
+        self.profile.nvidia_api_key = 'nv_fake'
+        self.profile.save()
         self.client.login(username='cvuser', password='password123')
 
     def test_cv_builder_view(self):
