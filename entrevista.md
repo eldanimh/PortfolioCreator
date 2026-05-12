@@ -2,6 +2,13 @@
 
 Documento preparatorio para la defensa oral. Preguntas típicas del profesor con respuestas claras sobre la **lógica**, no sobre el código en sí.
 
+## Instalación
+
+* 1. Hacer un venv
+* 2. pip install -r requirements.txt
+* 3. install playwright
+
+
 ---
 
 ## 0. Resumen Global: ¿Cómo funciona la aplicación? (El "Elevator Pitch")
