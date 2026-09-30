@@ -1,16 +1,10 @@
-# Entrega práctica mayo
+# Portfolio Crator
 
 ## Datos
 
-* Nombre: Daniel Martín Hurtado
-* Titulación: GISAM, Grado en Ingeniería en Sistemas Audiovisuales y Multimedia
-* Cuenta en laboratorios: eldanimh
-* Cuenta URJC: d.martinh.2021@alumnos.urjc.es
-* Vídeo básico (URL): [VÍDEO BÁSICO](https://youtu.be/mNSdh4ArwdQ)
-* Vídeo parte opcional (URL): [VÍDEO PARTE OPCIONAL](https://youtu.be/COsI5Ajd0cg)
-* Despliegue (URL): [ENLACE A PYTHONANYWHERE/RENDER](https://eldanimh.pythonanywhere.com)
-* Usuarios y contraseñas: testuser / testpassword123 (también se puede iniciar sesión con GitHub o Google)
-* Cuenta Admin Site: admin / ovVf0YtxSpZGhIK
+* Autor: Daniel Martín Hurtado
+* Vídeo Básico de uso(URL): [VÍDEO BÁSICO](https://youtu.be/mNSdh4ArwdQ)
+* Vídeo Avanzado de uso (URL): [VÍDEO PARTE OPCIONAL](https://youtu.be/COsI5Ajd0cg)
 
 ## Recursos y métodos HTTP
 
@@ -59,7 +53,7 @@
 * Recurso: `/<str:recurso>/`
   * Métodos permitidos: GET
 
-## Resumen parte obligatoria
+## Resumen parte básica
 
 Se ha implementado una aplicación web "Portfolio Creator" orientada a extraer repositorios y documentos de plataformas externas (GitHub, GitLab URJC y OpenAlex) para confeccionar un currículum o portfolio profesional unificado.
 
@@ -70,7 +64,7 @@ Se ha cubierto más del 80% del temario del curso aplicando los siguientes conce
 - **Plantillas y HTML:** Arquitectura de plantillas anidadas (herencia de `base.html`), uso intensivo de *tags* lógicos de Django, paso de contextos complejos, renderizado dinámico del DOM y saludo personalizado al usuario en la barra de navegación.
 - **Integraciones HTTP (APIs REST):** Consumo de APIs externas utilizando la librería `requests`. Se han manejado peticiones GET y POST con autenticación basada en *Bearer Tokens* y cabeceras *PRIVATE-TOKEN* para conexiones seguras con GitHub, GitLab y OpenAlex.
 
-## Lista partes opcionales
+## Lista partes avanzada
 
 * **Motor Generativo de IA (NVIDIA Gemma 2 / LM Studio):** Integración avanzada de Inteligencia Artificial (en la nube y local) mediante el protocolo de `openai`. La aplicación es capaz de realizar lecturas contextuales de código fuente o metadatos científicos para redactar resúmenes profesionales y estéticos en formato Markdown.
 * **Streaming de Respuestas HTTP:** La redacción de textos mediante IA se transmite al cliente en vivo (*streaming*) gracias al uso de generadores (`yield`) en las vistas de Django acoplados a un `StreamingHttpResponse`, evitando el bloqueo del servidor y creando un efecto visual de "máquina de escribir" muy inmersivo para el usuario final.
