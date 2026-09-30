@@ -55,7 +55,7 @@
 
 ## Resumen parte básica
 
-Se ha implementado una aplicación web "Portfolio Creator" orientada a extraer repositorios y documentos de plataformas externas (GitHub, GitLab URJC y OpenAlex) para confeccionar un currículum o portfolio profesional unificado.
+Se ha implementado una aplicación web "Portfolio Creator" orientada a extraer repositorios y documentos de plataformas externas (GitHub, GitLab y OpenAlex) para confeccionar un currículum o portfolio profesional unificado.
 
 Se ha cubierto más del 80% del temario del curso aplicando los siguientes conceptos:
 - **Modelos y Base de Datos:** Uso de SQLite con modelos relacionales extendiendo el modelo nativo (`UserProfile` con relación `OneToOneField`) y tablas genéricas (`ContenidoData`) almacenando estructuras JSON avanzadas.

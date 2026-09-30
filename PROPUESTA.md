@@ -1,7 +1,7 @@
 # PROPUESTA DE PROYECTO: Portfolio Creator
 
 ## 1. Descripción general de la aplicación y su utilidad
-**Portfolio Creator** es una aplicación web diseñada para resolver el problema de la dispersión de información profesional en el ámbito del desarrollo de software y la investigación académica. Muchos estudiantes, ingenieros e investigadores tienen sus proyectos repartidos en plataformas como GitHub, repositorios institucionales (GitLab URJC) y publicaciones científicas (OpenAlex). 
+**Portfolio Creator** es una aplicación web diseñada para resolver el problema de la dispersión de información profesional en el ámbito del desarrollo de software y la investigación académica. Muchos estudiantes, ingenieros e investigadores tienen sus proyectos repartidos en plataformas como GitHub, repositorios institucionales (GitLab) y publicaciones científicas (OpenAlex). 
 
 La aplicación permite a los usuarios conectar sus cuentas y extraer automáticamente todos estos repositorios y publicaciones en un único panel de control. Su principal innovación radica en la **integración de Inteligencia Artificial (IA)** para analizar el código y los metadatos de dichos proyectos y generar resúmenes profesionales, descriptivos y formateados. Finalmente, el usuario puede seleccionar qué proyectos desea destacar y exportar un Currículum/Portfolio unificado, bien en formato PDF estructurado o como una plantilla HTML responsiva y moderna lista para ser alojada en la web (ej. GitHub Pages).
 
@@ -19,7 +19,7 @@ El desarrollo se sustenta en una arquitectura clásica de servidor utilizando la
 
 **APIs Externas y de Inteligencia Artificial:**
 * **API REST de GitHub:** Para recuperar repositorios públicos y privados del usuario, así como su estructura de directorios.
-* **API REST de GitLab (URJC):** Para extraer proyectos académicos alojados en los servidores de la universidad.
+* **API REST de GitLab:** Para extraer proyectos académicos alojados en los servidores de la universidad.
 * **API de OpenAlex:** Para buscar y extraer metadatos de publicaciones científicas y *papers*.
 * **API de NVIDIA (Gemma-2-2b-it):** Utilizando la librería `openai` para procesar en la nube peticiones complejas a la IA y generar resúmenes en *streaming*.
 * **Local LM Studio API:** Soporte nativo para que el usuario pueda usar modelos locales (ej. `qwen2.5-7b-instruct`) y ejecutarlos en su propio hardware por privacidad.

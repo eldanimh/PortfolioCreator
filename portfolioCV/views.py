@@ -19,8 +19,16 @@ from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
 
 # ─── URLs base de las APIs externas ────────────────────────
-GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"  # API REST v4 de GitLab URJC
+GITLAB_DEFAULT_URL = "https://gitlab.com"  # Instancia por defecto si el usuario no indica otra
 GITHUB_API_URL = "https://api.github.com"                # API REST v3 de GitHub
+
+
+def gitlab_api_url(profile):
+    """Devuelve la URL base de la API v4 de la instancia GitLab del usuario (cualquier GitLab)"""
+    base = (profile.gitlab_url or GITLAB_DEFAULT_URL).strip().rstrip('/')
+    if base.endswith('/api/v4'):
+        base = base[:-len('/api/v4')]
+    return f"{base}/api/v4"
 
 # ─── Configuración de proxy para PythonAnywhere ───────────
 # PythonAnywhere (hosting gratuito) requiere un proxy HTTP para conexiones externas
@@ -32,7 +40,7 @@ PA_PROXIES = {"http": "http://proxy.server:3128", "https": "http://proxy.server:
 
 # ─── Página principal ──────────────────────────────────────
 def index(request):
-    """Página principal con dos apartados: GitLab URJC y GitHub"""
+    """Página principal con dos apartados: GitLab y GitHub"""
     # Si el usuario está autenticado (tiene cookie sessionid válida),
     # recuperamos sus recursos de la BD ordenados por fecha (más reciente primero)
     if request.user.is_authenticated:
@@ -181,15 +189,15 @@ def configurar_tokens(request):
     return render(request, 'portfolioCV/tokens.html', {'form': form})
 
 
-# ─── GitLab URJC - Repositorios ────────────────────────────
+# ─── GitLab - Repositorios ────────────────────────────
 @login_required
 def gitlab_repos(request):
-    """Lista los repositorios del usuario en GitLab URJC — petición GET a la API de GitLab"""
+    """Lista los repositorios del usuario en GitLab — petición GET a la API de GitLab"""
     profile = get_object_or_404(UserProfile, user=request.user)  # Busca el perfil del usuario
 
     # Verificar que el usuario tiene un token configurado
     if not profile.gitlab_token:
-        messages.warning(request, 'Configura tu token de GitLab URJC primero.')
+        messages.warning(request, 'Configura tu token de GitLab primero.')
         return redirect('configurar_tokens')
 
     # Cabecera HTTP de autenticación: GitLab usa PRIVATE-TOKEN (diferente a GitHub que usa Bearer)
@@ -204,7 +212,7 @@ def gitlab_repos(request):
         # Petición GET a la API REST de GitLab: GET /api/v4/projects?owned=True&per_page=50
         # params se convierten en query string: ?owned=True&per_page=50
         response = requests.get(
-            f"{GITLAB_URJC_URL}/projects",       # URL del endpoint
+            f"{gitlab_api_url(profile)}/projects",       # URL del endpoint
             headers=headers,                      # Cabeceras HTTP (con el token)
             params={"owned": True, "per_page": 50},  # Query string: solo mis repos, máximo 50
             timeout=10,                           # Máximo 10 segundos esperando respuesta
@@ -213,15 +221,15 @@ def gitlab_repos(request):
         if response.status_code == 200:   # HTTP 200 OK → éxito
             repos = response.json()       # Parsea el JSON de la respuesta a lista Python
         else:
-            error_msg = f"Error al conectar con GitLab URJC (código {response.status_code}). Verifica tu token."
+            error_msg = f"Error al conectar con GitLab (código {response.status_code}). Verifica tu token."
     except requests.exceptions.RequestException as e:  # Error de red (timeout, DNS, etc.)
-        error_msg = f"No se pudo conectar con GitLab URJC: {str(e)}"
+        error_msg = f"No se pudo conectar con GitLab: {str(e)}"
 
     # Renderiza el template con la lista de repos (o el mensaje de error)
     return render(request, 'portfolioCV/gitlab_repos.html', {
         'repos': repos,           # Lista de diccionarios con datos de cada repo
         'error_msg': error_msg,   # Mensaje de error (None si todo fue bien)
-        'platform': 'GitLab URJC',
+        'platform': 'GitLab',
     })
 
 
@@ -383,12 +391,12 @@ def gitlab_repo_detalle(request, repo_id):
 
     try:
         # 1ª petición: GET /projects/{id} → info general del repo (nombre, descripción, URL)
-        resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
 
         # 2ª petición: GET /projects/{id}/languages → porcentaje de cada lenguaje
-        resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()  # Ej: {"Python": 65.2, "JavaScript": 34.8}
     except requests.exceptions.RequestException as e:
@@ -398,7 +406,7 @@ def gitlab_repo_detalle(request, repo_id):
         'repo': repo,
         'languages': languages,
         'error_msg': error_msg,
-        'platform': 'GitLab URJC',
+        'platform': 'GitLab',
         'repo_id': repo_id,
     })
 
@@ -449,26 +457,26 @@ def generar_cv_gitlab(request, repo_id):
     tree = []
     readme = ""
     try:
-        resp = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp.status_code == 200:
             repo = resp.json()
         
         default_branch = repo.get('default_branch', 'main')
 
         # 2ª llamada: obtener lenguajes
-        resp_lang = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
         # 3ª llamada: obtener el árbol de archivos (recursive=true para subcarpetas)
-        resp_tree = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES)
+        resp_tree = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES)
         if resp_tree.status_code == 200:
             # Filtramos solo los archivos (tipo 'blob'), ignorando carpetas ('tree')
             tree = [item['path'] for item in resp_tree.json() if item.get('type') == 'blob']
         
         # 4ª llamada: obtener el README
         # Intentamos obtenerlo asumiendo que se llama README.md en la rama principal
-        resp_readme = requests.get(f"{GITLAB_URJC_URL}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
+        resp_readme = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
@@ -478,7 +486,7 @@ def generar_cv_gitlab(request, repo_id):
         pass  # Si falla algo, pasamos variables vacías a _generar_pdf y allí se gestiona
 
     # Delega la creación real del PDF a la función común _generar_pdf
-    return _generar_pdf(request.user, repo, languages, tree, readme, 'GitLab URJC')
+    return _generar_pdf(request.user, repo, languages, tree, readme, 'GitLab')
 
 
 @login_required
@@ -862,9 +870,9 @@ def descargar_cv_completo(request):
                     nuevo_item['url'] = rdata.get('html_url', '')
                     nuevo_item['language'] = rdata.get('language', '')
                     
-            elif item['platform'] == 'GitLab URJC':
+            elif item['platform'] == 'GitLab':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES)
+                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     nuevo_item['description'] = rdata.get('description', '')
@@ -977,9 +985,9 @@ def stream_resumen_gemini(request):
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
-            elif platform == 'GitLab URJC':
+            elif platform == 'GitLab':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
@@ -987,7 +995,7 @@ def stream_resumen_gemini(request):
                     default_branch = rdata.get('default_branch', 'main')
                 else:
                     default_branch = 'main'
-                resp_r = requests.get(f"{GITLAB_URJC_URL}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
+                resp_r = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 

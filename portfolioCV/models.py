@@ -18,11 +18,13 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     # Token de acceso personal de GitHub (para autenticarse en la API)
     github_token = models.CharField(max_length=255, blank=True, default='')
-    # Token de acceso personal de GitLab URJC
+    # Token de acceso personal de GitLab
     gitlab_token = models.CharField(max_length=255, blank=True, default='')
     # Nombre de usuario en GitHub (para construir URLs de repos)
     github_username = models.CharField(max_length=150, blank=True, default='')
-    # Nombre de usuario en GitLab URJC
+    # URL de la instancia GitLab (gitlab.com, GitLab autoalojado, etc.)
+    gitlab_url = models.CharField(max_length=255, blank=True, default='')
+    # Nombre de usuario en GitLab
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     # API Key de OpenAlex (opcional, para evitar límites de peticiones)
     openalex_token = models.CharField(max_length=255, blank=True, default='')

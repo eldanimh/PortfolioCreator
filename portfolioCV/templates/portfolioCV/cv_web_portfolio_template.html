@@ -466,7 +466,7 @@
                         <div class="project-header">
                             <h3 class="project-title">{{ item.name }}</h3>
                             <div class="badge-container">
-                                <span class="badge {% if item.platform == 'GitHub' %}github{% elif item.platform == 'GitLab URJC' %}gitlab{% elif item.platform == 'OpenAlex' %}openalex{% elif item.platform == 'IA Summary' %}ia{% endif %}">
+                                <span class="badge {% if item.platform == 'GitHub' %}github{% elif item.platform == 'GitLab' %}gitlab{% elif item.platform == 'OpenAlex' %}openalex{% elif item.platform == 'IA Summary' %}ia{% endif %}">
                                     {{ item.platform }}
                                 </span>
                                 {% if item.language %}

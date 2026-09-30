@@ -17,14 +17,14 @@ urlpatterns = [
     # ─── Configuración de tokens de API ────────────────────────────
     path('tokens/', views.configurar_tokens, name='configurar_tokens'),
 
-    # ─── GitLab URJC ──────────────────────────────────────────────
+    # ─── GitLab ──────────────────────────────────────────────
     path('gitlab/', views.gitlab_repos, name='gitlab_repos'),                          # Lista todos los repos
     path('gitlab/<int:repo_id>/', views.gitlab_repo_detalle, name='gitlab_repo_detalle'),  # Detalle de un repo (ID numérico)
     path('gitlab/<int:repo_id>/cv/', views.generar_cv_gitlab, name='generar_cv_gitlab'),   # Descargar PDF de ese repo
 
     # ─── GitHub ────────────────────────────────────────────────────
     path('github/', views.github_repos, name='github_repos'),                                       # Lista repos
-    path('github/<str:owner>/<str:repo_name>/', views.github_repo_detalle, name='github_repo_detalle'),  # Detalle: /github/eldanimh/TeoriaLTAW/
+    path('github/<str:owner>/<str:repo_name>/', views.github_repo_detalle, name='github_repo_detalle'),  # Detalle: /github/eldanimh/mi-repo/
     path('github/<str:owner>/<str:repo_name>/cv/', views.generar_cv_github, name='generar_cv_github'),   # PDF de ese repo
 
     # ─── OpenAlex API (búsqueda de bibliografía) ──────────────────

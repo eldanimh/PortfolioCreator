@@ -240,12 +240,12 @@ repos = response.json()
 - Autenticación: `Bearer Token` en cabecera `Authorization`
 - Endpoints usados: `/user/repos`, `/repos/{owner}/{name}`, `/repos/.../readme`, `/repos/.../languages`, `/repos/.../git/trees/`
 
-### 4.2 GitLab URJC API
+### 4.2 GitLab API
 ```python
-GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"
+GITLAB_URL = "https://gitlab.eif.urjc.es/api/v4"
 
 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-response = requests.get(f"{GITLAB_URJC_URL}/projects", headers=headers,
+response = requests.get(f"{GITLAB_URL}/projects", headers=headers,
                         params={"owned": True, "per_page": 50}, timeout=10)
 ```
 

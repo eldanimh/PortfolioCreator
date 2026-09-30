@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-header">
-    {% if platform == "GitLab URJC" %}
+    {% if platform == "GitLab" %}
         <a href="{% url 'gitlab_repos' %}" class="back-link">← Volver a repositorios</a>
     {% elif platform == "OpenAlex" %}
         <a href="{% url 'openalex_repos' %}" class="back-link">← Volver a la búsqueda</a>
@@ -12,7 +12,7 @@
         <a href="{% url 'github_repos' %}" class="back-link">← Volver a repositorios</a>
     {% endif %}
     <h1 class="page-title">
-        {% if platform == "GitLab URJC" %}🦊{% else %}🐙{% endif %}
+        {% if platform == "GitLab" %}🦊{% else %}🐙{% endif %}
         {{ repo.name|default:"Repositorio" }}
     </h1>
 </div>
@@ -82,13 +82,13 @@
     {% endif %}
 
     <div class="detail-actions" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        {% if platform == "GitLab URJC" %}
+        {% if platform == "GitLab" %}
             <a href="{% url 'generar_cv_gitlab' repo_id %}" class="btn btn-primary btn-large">
                 📄 Descargar CV en PDF
             </a>
             <form method="post" action="{% url 'agregar_al_cv' %}">
                 {% csrf_token %}
-                <input type="hidden" name="platform" value="GitLab URJC">
+                <input type="hidden" name="platform" value="GitLab">
                 <input type="hidden" name="id" value="{{ repo_id }}">
                 <input type="hidden" name="name" value="{{ repo.name }}">
                 <button type="submit" class="btn btn-large" style="background: #2ea043; border-color: #2ea043; color: white;">+ Añadir a Mi CV Profesional</button>
@@ -123,8 +123,8 @@
         <p style="color: #57606a; margin-bottom: 1rem;">Genera un resumen profesional de este proyecto usando Gemini AI. Elige el tipo de CV:</p>
         <form method="post" action="{% url 'generar_resumen_gemini' %}">
             {% csrf_token %}
-            {% if platform == "GitLab URJC" %}
-                <input type="hidden" name="platform" value="GitLab URJC">
+            {% if platform == "GitLab" %}
+                <input type="hidden" name="platform" value="GitLab">
                 <input type="hidden" name="id" value="{{ repo_id }}">
             {% elif platform == "OpenAlex" %}
                 <input type="hidden" name="platform" value="OpenAlex">

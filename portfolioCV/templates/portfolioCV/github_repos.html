@@ -6,7 +6,7 @@
 <div class="page-header">
     <a href="{% url 'index' %}" class="back-link">← Volver al inicio</a>
     <h1 class="page-title">
-        {% if platform == "GitLab URJC" %}🦊{% else %}🐙{% endif %}
+        {% if platform == "GitLab" %}🦊{% else %}🐙{% endif %}
         Repositorios en {{ platform }}
     </h1>
 </div>
@@ -23,7 +23,7 @@
     <div class="repo-card">
         <div class="repo-header">
             <h3 class="repo-name">
-                {% if platform == "GitLab URJC" %}
+                {% if platform == "GitLab" %}
                     {{ repo.name }}
                 {% else %}
                     {{ repo.name }}
@@ -55,11 +55,11 @@
         </div>
 
         <div class="repo-actions" style="display: flex; gap: 5px; align-items: center;">
-            {% if platform == "GitLab URJC" %}
+            {% if platform == "GitLab" %}
                 <a href="{% url 'gitlab_repo_detalle' repo.id %}" class="btn btn-small btn-primary">Ver detalle y crear PDF</a>
                 <form method="post" action="{% url 'agregar_al_cv' %}" style="display:inline;">
                     {% csrf_token %}
-                    <input type="hidden" name="platform" value="GitLab URJC">
+                    <input type="hidden" name="platform" value="GitLab">
                     <input type="hidden" name="id" value="{{ repo.id }}">
                     <input type="hidden" name="name" value="{{ repo.name }}">
                     <button type="submit" class="btn btn-small" style="background: #2ea043; border-color: #2ea043; color: white;" title="Añadir a Mi CV Profesional">+ Añadir al CV</button>

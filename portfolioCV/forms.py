@@ -27,28 +27,30 @@ class TokensForm(forms.ModelForm):
     class Meta:
         model = UserProfile  # Este formulario edita objetos de tipo UserProfile
         # Campos que se muestran en el formulario (orden en que aparecen)
-        fields = ['github_token', 'gitlab_token', 'openalex_token', 'nvidia_api_key', 'github_username', 'gitlab_username', 'lm_studio_url']
+        fields = ['github_token', 'gitlab_url', 'gitlab_token', 'openalex_token', 'nvidia_api_key', 'github_username', 'gitlab_username', 'lm_studio_url']
         # Widgets: controlan CÓMO se renderiza cada campo en el HTML
         widgets = {
             # PasswordInput: muestra el campo como tipo password (****) para ocultar el token
             'github_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitHub'}),
-            'gitlab_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitLab URJC'}),
+            'gitlab_url': forms.URLInput(attrs={'placeholder': 'https://gitlab.com'}),
+            'gitlab_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitLab'}),
             'openalex_token': forms.PasswordInput(attrs={'placeholder': 'API Key de OpenAlex (Opcional)'}),
             'nvidia_api_key': forms.PasswordInput(attrs={'placeholder': 'API Key de NVIDIA'}),
             # TextInput: campo de texto normal (el username no es secreto)
             'github_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitHub'}),
-            'gitlab_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitLab URJC'}),
+            'gitlab_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitLab'}),
             # URLInput: campo de tipo URL (valida que sea una URL válida)
             'lm_studio_url': forms.URLInput(attrs={'placeholder': 'http://127.0.0.1:1234'}),
         }
         # Labels: texto que aparece encima de cada campo en el formulario HTML
         labels = {
             'github_token': 'GitHub Personal Access Token',
-            'gitlab_token': 'GitLab URJC Personal Access Token',
+            'gitlab_url': 'URL de tu GitLab (vacío = gitlab.com)',
+            'gitlab_token': 'GitLab Personal Access Token',
             'openalex_token': 'OpenAlex API Key',
             'nvidia_api_key': 'NVIDIA API Key',
             'github_username': 'Nombre de usuario en GitHub',
-            'gitlab_username': 'Nombre de usuario en GitLab URJC',
+            'gitlab_username': 'Nombre de usuario en GitLab',
             'lm_studio_url': 'URL de servidor LM Studio Local',
         }
 

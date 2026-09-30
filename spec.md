@@ -52,12 +52,12 @@ for chunk in completion:
 * No uses JavaScript.
 * Usa el conversor `<str:recurso>` en las URLs de Django para capturar el nombre del recurso.
 * Añade CSS para que se vea profesional y elegante.
-* USA la api de Gitlab de la urjc codigo:
+* USA la api de Gitlab código:
 ```
 # portfolioCV/views.py
 import requests
 
-GITLAB_URJC_URL = "https://gitlab.eif.urjc.es/api/v4"
+GITLAB_URL = "https://gitlab.eif.urjc.es/api/v4"
 
 def gitlab_repos(request):
     token = request.user.profile.gitlab_token  # o como lo guardes
@@ -65,7 +65,7 @@ def gitlab_repos(request):
     
     # Listar repos del usuario
     response = requests.get(
-        f"{GITLAB_URJC_URL}/projects",
+        f"{GITLAB_URL}/projects",
         headers=headers,
         params={"owned": True, "per_page": 50}
     )
@@ -178,7 +178,7 @@ print(response.text)
 * `/` : Página principal
   * GET: Devuelve una página HTML con:
     * Título `<h1>`: "Portfolio Creator"
-    * Párrafo `<p>`: "Elige entre Github de la URJC o Github:"
+    * Párrafo `<p>`: "Elige entre GitLab o Github:"
     * Lista `<ul>` con todos los recursos de la base de datos, donde cada elemento es un enlace `<a>` a `/<nombre_recurso>/`
     * Formulario para crear un nuevo recurso con su contenido. El formulario debe tener un campo para el nombre del recurso y otro para el contenido.
   * POST: Crea un nuevo recurso con el nombre y el contenido proporcionados en el formulario. Para ello, lo almacenará en la tabla Contenido de la base de datos.

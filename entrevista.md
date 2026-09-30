@@ -469,7 +469,7 @@ def github_repo_detalle(request, owner, repo_name):
     repo_data = response.json() 
 ```
 
-### ¿Y GitLab URJC?
+### ¿Y GitLab?
 
 Misma idea, distinta autenticación:
 ```python

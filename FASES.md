@@ -16,7 +16,7 @@ Se ha establecido la estructura básica de la aplicación:
 
 ### 2. Lo pendiente
 En esta etapa del prototipo quedaba pendiente:
-* Integrar la API de GitLab de la URJC y el buscador científico de OpenAlex.
+* Integrar la API de GitLab y el buscador científico de OpenAlex.
 * Diseñar la interfaz del "Constructor de CV".
 * Implementar la librería `xhtml2pdf` y Playwright para la exportación de documentos.
 * Conectar la inteligencia artificial para el procesado de textos.
@@ -32,7 +32,7 @@ Durante la fase de diseño inicial se propuso usar el motor de IA "Google Gemini
 
 ### 1. Funcionalidad obligatoria completa
 Se ha concluido el desarrollo de todo el sistema básico y avanzado propuesto:
-* **Integración total de APIs:** La aplicación ya es capaz de extraer repositorios de GitHub, repositorios institucionales cerrados de GitLab (URJC) y publicaciones de *papers* científicos mediante OpenAlex.
+* **Integración total de APIs:** La aplicación ya es capaz de extraer repositorios de GitHub, repositorios institucionales cerrados de GitLab y publicaciones de *papers* científicos mediante OpenAlex.
 * **Generador de Portfolio/CV:** Se ha desarrollado un panel ("Constructor de CV") donde el usuario puede agrupar todos sus recursos, añadir información personal de contacto y previsualizar los resultados.
 * **Exportación Profesional:** El proyecto se puede exportar tanto en una plantilla HTML moderna, estética y responsiva (lista para subir a GitHub Pages), como en formato documento PDF maquetado.
 
