@@ -1,73 +1,124 @@
-# Portfolio Crator
+<div align="center">
 
-## Datos
+# 🚀 Portfolio Creator
 
-* Autor: Daniel Martín Hurtado
-* Vídeo Básico de uso (URL): [VÍDEO BÁSICO](https://youtu.be/mNSdh4ArwdQ)
-* Vídeo Avanzado de uso (URL): [VÍDEO PARTE OPCIONAL](https://youtu.be/COsI5Ajd0cg)
+**Reúne tus proyectos de GitHub, GitLab y tus publicaciones de OpenAlex en un único CV / portfolio profesional.**
 
-## Recursos y métodos HTTP
+![Django](https://img.shields.io/badge/Django-092E20?logo=django&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)
+![GitLab](https://img.shields.io/badge/GitLab-FC6D26?logo=gitlab&logoColor=white)
+![OpenAlex](https://img.shields.io/badge/OpenAlex-API-orange)
+![IA](https://img.shields.io/badge/IA-NVIDIA%20%7C%20LM%20Studio-76B900)
 
-* Recurso: `/`
-  * Métodos permitidos: GET, POST
-* Recurso: `/registro/`
-  * Métodos permitidos: GET, POST
-* Recurso: `/login/`
-  * Métodos permitidos: GET, POST
-* Recurso: `/logout/`
-  * Métodos permitidos: GET
-* Recurso: `/tokens/`
-  * Métodos permitidos: GET, POST
-* Recurso: `/gitlab/`
-  * Métodos permitidos: GET
-* Recurso: `/gitlab/<int:repo_id>/`
-  * Métodos permitidos: GET
-* Recurso: `/github/`
-  * Métodos permitidos: GET
-* Recurso: `/github/<str:owner>/<str:repo_name>/`
-  * Métodos permitidos: GET
-* Recurso: `/openalex/`
-  * Métodos permitidos: GET
-* Recurso: `/openalex/<str:work_id>/`
-  * Métodos permitidos: GET
-* Recurso: `/mi-cv/`
-  * Métodos permitidos: GET, POST
-* Recurso: `/mi-cv/add/`
-  * Métodos permitidos: POST
-* Recurso: `/mi-cv/add-ia/`
-  * Métodos permitidos: POST
-* Recurso: `/mi-cv/remove/`
-  * Métodos permitidos: POST
-* Recurso: `/mi-cv/descargar/`
-  * Métodos permitidos: GET
-* Recurso: `/gemini/resumen/` (Página de resumen IA)
-  * Métodos permitidos: POST
-* Recurso: `/gemini/stream/` (Endpoint streaming NVIDIA/OpenAI)
-  * Métodos permitidos: POST
-* Recurso: `/accounts/github/login/` (OAuth GitHub - django-allauth)
-  * Métodos permitidos: GET
-* Recurso: `/accounts/google/login/` (OAuth Google - django-allauth)
-  * Métodos permitidos: GET
-* Recurso: `/<str:recurso>/eliminar/`
-  * Métodos permitidos: POST
-* Recurso: `/<str:recurso>/`
-  * Métodos permitidos: GET
+<img src="portfolioCV/static/portfolioCV/img/PortFolioCreatorIMG.webp" alt="Captura de Portfolio Creator" width="850">
 
-## Resumen parte básica
+</div>
 
-Se ha implementado una aplicación web "Portfolio Creator" orientada a extraer repositorios y documentos de plataformas externas (GitHub, GitLab y OpenAlex) para confeccionar un currículum o portfolio profesional unificado.
+---
 
-Se ha cubierto más del 80% del temario del curso aplicando los siguientes conceptos:
-- **Modelos y Base de Datos:** Uso de SQLite con modelos relacionales extendiendo el modelo nativo (`UserProfile` con relación `OneToOneField`) y tablas genéricas (`ContenidoData`) almacenando estructuras JSON avanzadas.
-- **Formularios y Validación:** Uso de formularios de Django (`ModelForm`, `UserCreationForm`) con validación de datos, manejo de errores y protección contra ataques CSRF.
-- **Autenticación y Sesiones:** Sistema completo de registro, login y logout con validación de errores en español. Protección estricta de rutas con `@login_required` y manejo de información efímera mediante `request.session`. Integración de **django-allauth** para login social con **GitHub y Google** (OAuth 2.0).
-- **Plantillas y HTML:** Arquitectura de plantillas anidadas (herencia de `base.html`), uso intensivo de *tags* lógicos de Django, paso de contextos complejos, renderizado dinámico del DOM y saludo personalizado al usuario en la barra de navegación.
-- **Integraciones HTTP (APIs REST):** Consumo de APIs externas utilizando la librería `requests`. Se han manejado peticiones GET y POST con autenticación basada en *Bearer Tokens* y cabeceras *PRIVATE-TOKEN* para conexiones seguras con GitHub, GitLab y OpenAlex.
+## 📖 ¿Qué es?
 
-## Lista partes avanzada
+Tu información profesional suele estar dispersa: código en GitHub, proyectos en el GitLab de tu universidad o empresa, artículos en bases de datos científicas. **Portfolio Creator** la junta en un solo sitio, te deja elegir qué mostrar y genera tu CV listo para descargar en **PDF** o **HTML**, con resúmenes redactados por IA.
 
-* **Motor Generativo de IA (NVIDIA Gemma 2 / LM Studio):** Integración avanzada de Inteligencia Artificial (en la nube y local) mediante el protocolo de `openai`. La aplicación es capaz de realizar lecturas contextuales de código fuente o metadatos científicos para redactar resúmenes profesionales y estéticos en formato Markdown.
-* **Streaming de Respuestas HTTP:** La redacción de textos mediante IA se transmite al cliente en vivo (*streaming*) gracias al uso de generadores (`yield`) en las vistas de Django acoplados a un `StreamingHttpResponse`, evitando el bloqueo del servidor y creando un efecto visual de "máquina de escribir" muy inmersivo para el usuario final.
-* **Exportación Avanzada Multipropósito (PDF y HTML):** El generador de CV no se limita a mostrar datos en pantalla; cuenta con un motor de exportación que convierte las plantillas renderizadas de Django en documentos PDF de alta fidelidad o en un archivo estático HTML 100% responsivo y autocontenido, listo para ser alojado gratuitamente en servidores como GitHub Pages.
-* **Testing Automatizado Exhaustivo (Mocks):** Para garantizar la robustez, se ha desarrollado una batería de 15 pruebas unitarias (`tests.py`) que cubren autenticación, formularios y modelos. Destaca el uso avanzado de *Mocking* (`unittest.mock.patch`) para simular respuestas de red de las APIs externas y de la red neuronal de IA, logrando ejecutar la suite completa en segundos sin depender de internet y con 0 fallos detectados.
-* **Login Social (OAuth 2.0):** Integración de `django-allauth` para permitir inicio de sesión con un clic mediante cuentas de **GitHub** y **Google**, con creación automática de perfil de usuario mediante signals de Django.
+## ✨ Características
+
+- 🦊 **Cualquier GitLab:** conecta `gitlab.com` o la instancia de tu universidad o empresa indicando su URL.
+- 🐙 **GitHub y GitLab:** lista tus repositorios, consulta su detalle (lenguajes, README) y añádelos a tu CV.
+- 📚 **OpenAlex:** busca publicaciones científicas y súmalas a tu portfolio.
+- 🤖 **Resúmenes con IA:** genera descripciones profesionales en Markdown con NVIDIA (nube) o LM Studio (local).
+- ⚡ **Streaming en vivo:** el texto de la IA aparece al instante, con efecto "máquina de escribir".
+- 📄 **Exportación:** descarga tu CV en PDF o como HTML autocontenido y responsive, ideal para GitHub Pages.
+- 🔐 **Cuentas y login social:** registro/login clásico y OAuth con **GitHub** y **Google** (django-allauth).
+- 🧪 **Tests con mocks:** 17 pruebas que se ejecutan en segundos sin depender de internet.
+
+## 👤 Datos
+
+- **Autor:** Daniel Martín Hurtado ([@eldanimh](https://github.com/eldanimh))
+- 🎬 [Vídeo básico de uso](https://youtu.be/mNSdh4ArwdQ)
+- 🎬 [Vídeo parte opcional](https://youtu.be/COsI5Ajd0cg)
+
+## ⚙️ Instalación
+
+```bash
+# 1. Clona el repositorio y entra en la carpeta
+git clone https://github.com/eldanimh/PortfolioCreator.git
+cd PortfolioCreator
+
+# 2. Crea y activa un entorno virtual
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Instala las dependencias
+pip install -r requirements.txt
+
+# 4. Crea la base de datos y arranca el servidor
+python manage.py migrate
+python manage.py runserver
+```
+
+Abre <http://127.0.0.1:8000>, regístrate y entra en **⚙ Tokens** para configurar tus accesos:
+
+| Servicio | Qué necesitas |
+|---|---|
+| **GitLab** | URL de tu instancia (vacío = `gitlab.com`) y un Personal Access Token con scope `read_api` |
+| **GitHub** | Personal Access Token con scope `repo` o `public_repo` |
+| **OpenAlex** | Opcional: una API Key evita los límites de peticiones |
+| **IA** | API Key de NVIDIA (`build.nvidia.com`) o la URL de tu servidor LM Studio local |
+
+Para pasar los tests: `python manage.py test`
+
+> ⚠️ Los tokens se guardan en la base de datos local. No publiques tu `db.sqlite3`.
+
+## 🧩 Resumen parte básica
+
+Aplicación web orientada a extraer repositorios y documentos de plataformas externas (GitHub, GitLab y OpenAlex) para confeccionar un currículum o portfolio profesional unificado. Cubre más del 80% del temario del curso:
+
+- **Modelos y Base de Datos:** SQLite con modelos relacionales que extienden el modelo nativo (`UserProfile` con `OneToOneField`) y tablas genéricas (`ContenidoData`) que almacenan estructuras JSON.
+- **Formularios y Validación:** formularios de Django (`ModelForm`, `UserCreationForm`) con validación, manejo de errores y protección CSRF.
+- **Autenticación y Sesiones:** registro, login y logout con errores en español. Rutas protegidas con `@login_required` y datos efímeros en `request.session`. Login social con **django-allauth** (GitHub y Google, OAuth 2.0).
+- **Plantillas y HTML:** plantillas anidadas (herencia de `base.html`), tags lógicos de Django, contextos complejos y saludo personalizado en la barra de navegación.
+- **Integraciones HTTP (APIs REST):** consumo de APIs externas con `requests`: peticiones GET y POST con *Bearer Tokens* y cabeceras *PRIVATE-TOKEN* para GitHub, GitLab y OpenAlex.
+
+## 🚀 Parte avanzada
+
+- **Motor Generativo de IA (NVIDIA Gemma 2 / LM Studio):** IA en la nube y en local mediante el protocolo de `openai`. Lee el código fuente o los metadatos científicos para redactar resúmenes profesionales en Markdown.
+- **Streaming de respuestas HTTP:** la redacción se transmite en vivo con generadores (`yield`) y `StreamingHttpResponse`, sin bloquear el servidor.
+- **Exportación multipropósito (PDF y HTML):** las plantillas de Django se convierten en PDF de alta fidelidad o en un HTML estático 100% responsive y autocontenido.
+- **Testing automatizado (mocks):** 17 pruebas unitarias (`tests.py`) sobre autenticación, formularios y modelos, con `unittest.mock.patch` para simular las APIs externas y la IA.
+- **Login social (OAuth 2.0):** inicio de sesión con un clic con **GitHub** y **Google**, con creación automática del perfil mediante signals.
+
+## 🌐 Recursos y métodos HTTP
+
+| Recurso | Métodos | Descripción |
+|---|---|---|
+| `/` | GET, POST | Página principal |
+| `/registro/` | GET, POST | Registro de usuario |
+| `/login/` | GET, POST | Inicio de sesión |
+| `/logout/` | GET | Cierre de sesión |
+| `/tokens/` | GET, POST | Configuración de tokens y URL de GitLab |
+| `/gitlab/` | GET | Repositorios de GitLab |
+| `/gitlab/<int:repo_id>/` | GET | Detalle de un repositorio GitLab |
+| `/github/` | GET | Repositorios de GitHub |
+| `/github/<str:owner>/<str:repo_name>/` | GET | Detalle de un repositorio GitHub |
+| `/openalex/` | GET | Buscador de publicaciones |
+| `/openalex/<str:work_id>/` | GET | Detalle de una publicación |
+| `/mi-cv/` | GET, POST | Panel del constructor de CV |
+| `/mi-cv/add/` | POST | Añadir elemento al CV |
+| `/mi-cv/add-ia/` | POST | Añadir resumen de IA al CV |
+| `/mi-cv/remove/` | POST | Quitar elemento del CV |
+| `/mi-cv/descargar/` | GET | Descargar el CV completo |
+| `/gemini/resumen/` | POST | Página de resumen con IA |
+| `/gemini/stream/` | POST | Streaming de IA (NVIDIA/OpenAI) |
+| `/accounts/github/login/` | GET | OAuth GitHub (django-allauth) |
+| `/accounts/google/login/` | GET | OAuth Google (django-allauth) |
+| `/<str:recurso>/eliminar/` | POST | Eliminar un recurso |
+| `/<str:recurso>/` | GET | Ver un recurso |
+
+---
+
+<div align="center">
+
+Hecho con ❤️ por **Daniel Martín Hurtado**
+
+</div>
