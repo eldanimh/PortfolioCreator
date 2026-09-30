@@ -3,7 +3,7 @@
 ## Datos
 
 * Autor: Daniel Martín Hurtado
-* Vídeo Básico de uso(URL): [VÍDEO BÁSICO](https://youtu.be/mNSdh4ArwdQ)
+* Vídeo Básico de uso (URL): [VÍDEO BÁSICO](https://youtu.be/mNSdh4ArwdQ)
 * Vídeo Avanzado de uso (URL): [VÍDEO PARTE OPCIONAL](https://youtu.be/COsI5Ajd0cg)
 
 ## Recursos y métodos HTTP
