@@ -6,6 +6,8 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 # Importamos el decorador receiver para conectar la signal con nuestra función
 from django.dispatch import receiver
+# Campo que cifra su valor en la BD
+from .fields import EncryptedCharField
 
 
 # ─── Tabla UserProfile ─────────────────────────────────────
@@ -17,9 +19,9 @@ class UserProfile(models.Model):
     # related_name='profile': permite acceder desde user.profile
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     # Token de acceso personal de GitHub (para autenticarse en la API)
-    github_token = models.CharField(max_length=255, blank=True, default='')
+    github_token = EncryptedCharField(blank=True, default='')
     # Token de acceso personal de GitLab
-    gitlab_token = models.CharField(max_length=255, blank=True, default='')
+    gitlab_token = EncryptedCharField(blank=True, default='')
     # Nombre de usuario en GitHub (para construir URLs de repos)
     github_username = models.CharField(max_length=150, blank=True, default='')
     # URL de la instancia GitLab (gitlab.com, GitLab autoalojado, etc.)
@@ -27,9 +29,9 @@ class UserProfile(models.Model):
     # Nombre de usuario en GitLab
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     # API Key de OpenAlex (opcional, para evitar límites de peticiones)
-    openalex_token = models.CharField(max_length=255, blank=True, default='')
+    openalex_token = EncryptedCharField(blank=True, default='')
     # API Key de NVIDIA para usar modelos de IA en la nube
-    nvidia_api_key = models.CharField(max_length=255, blank=True, default='')
+    nvidia_api_key = EncryptedCharField(blank=True, default='')
     # URL del servidor LM Studio local (para IA en local, ej: http://127.0.0.1:1234)
     lm_studio_url = models.CharField(max_length=255, blank=True, default='')
 

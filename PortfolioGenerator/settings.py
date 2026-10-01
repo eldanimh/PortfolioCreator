@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,18 +21,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# Esta es la llave maestra de Django. Se usa para firmar las cookies de sesión (sessionid)
-# y crear los hashes de las contraseñas. ¡Si se filtra, pueden falsificar sesiones!
-SECRET_KEY = 'django-insecure-%9de3%*4-dev&1+vkzg%4wteaf%fo4gl$evxnoo3namm2@0(sz'
+# Se lee de la variable de entorno DJANGO_SECRET_KEY. El valor por defecto SOLO sirve en local.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-solo-para-local")
+
+# Clave (Fernet) con la que se cifran los tokens/API keys de los usuarios en la BD.
+# Generar con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Si no se define, se deriva de SECRET_KEY (válido en local; en producción definirla explícitamente).
+FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", "")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # En True muestra la pantalla amarilla de error de Django con detalles del código.
 # En producción (PythonAnywhere) DEBE estar en False para que los usuarios vean la página 404/500 estándar.
-DEBUG = False 
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
 # Dominios desde los que se permite acceder a la aplicación.
-# '*' significa "todos", útil para desarrollo local y para PythonAnywhere al mismo tiempo.
-ALLOWED_HOSTS = ['*']
+# Lista separada por comas en DJANGO_ALLOWED_HOSTS (en PythonAnywhere: tuusuario.pythonanywhere.com).
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 
 # Application definition
