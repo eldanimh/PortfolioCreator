@@ -35,8 +35,7 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 ## 👤 Datos
 
 - **Autor:** Daniel Martín Hurtado ([@eldanimh](https://github.com/eldanimh))
-- 🎬 [Vídeo básico de uso](https://youtu.be/mNSdh4ArwdQ)
-- 🎬 [Vídeo parte opcional](https://youtu.be/COsI5Ajd0cg)
+- **Web**: https://danimh.dev
 
 ## ⚙️ Instalación
 
