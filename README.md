@@ -37,7 +37,7 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 ## 👤 Datos
 
 - **Autor:** Daniel Martín Hurtado ([@eldanimh](https://github.com/eldanimh))
-- **Web**: https://danimh.dev
+- **Web**: [creator.danimh.dev](https://creator.danimh.dev)
 
 ## ⚙️ Instalación
 
