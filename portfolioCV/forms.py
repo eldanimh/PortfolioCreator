@@ -6,6 +6,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 # Importamos nuestros modelos propios
 from .models import UserProfile, ContenidoData
+from .seguridad import url_externa_segura
+from django.conf import settings
 
 
 # ─── Formulario de Registro ────────────────────────────────
@@ -53,6 +55,21 @@ class TokensForm(forms.ModelForm):
             'gitlab_username': 'Nombre de usuario en GitLab',
             'lm_studio_url': 'URL de servidor LM Studio Local',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # LM Studio solo funciona en local: fuera de ahí ni se muestra el campo
+        if not settings.ALLOW_LOCAL_LLM:
+            self.fields.pop('lm_studio_url', None)
+
+    def clean_gitlab_url(self):
+        """Rechaza URLs de GitLab que no sean https públicas (anti-SSRF)"""
+        url = (self.cleaned_data.get('gitlab_url') or '').strip()
+        if url and not url_externa_segura(url):
+            raise forms.ValidationError(
+                "Usa una URL https pública de tu GitLab (sin puerto ni parámetros)."
+            )
+        return url
 
 
 # ─── Formulario de Contenido/Recurso ──────────────────────

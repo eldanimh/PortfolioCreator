@@ -17,6 +17,8 @@ from django.contrib.auth.forms import AuthenticationForm  # Formulario de login 
 from django.contrib import messages  # Sistema de mensajes flash (se muestran una vez al usuario)
 from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
+from .seguridad import url_externa_segura  # Valida URLs que introduce el usuario (anti-SSRF)
+from django.conf import settings
 
 # ─── URLs base de las APIs externas ────────────────────────
 GITLAB_DEFAULT_URL = "https://gitlab.com"  # Instancia por defecto si el usuario no indica otra
@@ -26,9 +28,19 @@ GITHUB_API_URL = "https://api.github.com"                # API REST v3 de GitHub
 def gitlab_api_url(profile):
     """Devuelve la URL base de la API v4 de la instancia GitLab del usuario (cualquier GitLab)"""
     base = (profile.gitlab_url or GITLAB_DEFAULT_URL).strip().rstrip('/')
+    if not url_externa_segura(base):
+        base = GITLAB_DEFAULT_URL  # nunca llamamos a una dirección interna
     if base.endswith('/api/v4'):
         base = base[:-len('/api/v4')]
     return f"{base}/api/v4"
+
+
+def modelo_permitido(request):
+    """Lee el modelo elegido y descarta 'local' (LM Studio) si no está permitido en este entorno"""
+    modelo = request.POST.get('llm_model', 'nvidia-gemma')
+    if modelo == 'local' and not settings.ALLOW_LOCAL_LLM:
+        return 'nvidia-gemma'
+    return modelo
 
 # ─── Configuración de proxy para PythonAnywhere ───────────
 # PythonAnywhere (hosting gratuito) requiere un proxy HTTP para conexiones externas
@@ -216,7 +228,8 @@ def gitlab_repos(request):
             headers=headers,                      # Cabeceras HTTP (con el token)
             params={"owned": True, "per_page": 50},  # Query string: solo mis repos, máximo 50
             timeout=10,                           # Máximo 10 segundos esperando respuesta
-            proxies=proxies                       # Proxy (None en local)
+            proxies=proxies,                      # Proxy (None en local)
+            allow_redirects=False                 # No seguir redirecciones (podrían ir a una IP interna)
         )
         if response.status_code == 200:   # HTTP 200 OK → éxito
             repos = response.json()       # Parsea el JSON de la respuesta a lista Python
@@ -391,12 +404,12 @@ def gitlab_repo_detalle(request, repo_id):
 
     try:
         # 1ª petición: GET /projects/{id} → info general del repo (nombre, descripción, URL)
-        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
         if resp.status_code == 200:
             repo = resp.json()
 
         # 2ª petición: GET /projects/{id}/languages → porcentaje de cada lenguaje
-        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()  # Ej: {"Python": 65.2, "JavaScript": 34.8}
     except requests.exceptions.RequestException as e:
@@ -457,26 +470,26 @@ def generar_cv_gitlab(request, repo_id):
     tree = []
     readme = ""
     try:
-        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
         if resp.status_code == 200:
             repo = resp.json()
         
         default_branch = repo.get('default_branch', 'main')
 
         # 2ª llamada: obtener lenguajes
-        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
         # 3ª llamada: obtener el árbol de archivos (recursive=true para subcarpetas)
-        resp_tree = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES)
+        resp_tree = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
         if resp_tree.status_code == 200:
             # Filtramos solo los archivos (tipo 'blob'), ignorando carpetas ('tree')
             tree = [item['path'] for item in resp_tree.json() if item.get('type') == 'blob']
         
         # 4ª llamada: obtener el README
         # Intentamos obtenerlo asumiendo que se llama README.md en la rama principal
-        resp_readme = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
+        resp_readme = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
@@ -872,7 +885,7 @@ def descargar_cv_completo(request):
                     
             elif item['platform'] == 'GitLab':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES)
+                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES, allow_redirects=False)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     nuevo_item['description'] = rdata.get('description', '')
@@ -931,7 +944,7 @@ def generar_resumen_gemini(request):
     item_id = request.POST.get('id', '')
     cv_type = request.POST.get('cv_type', 'extenso')  # extenso, una_pagina, tecnologia, tfg
     item_name = request.POST.get('name', 'Proyecto')
-    llm_model = request.POST.get('llm_model', 'nvidia-gemma')  # local o nube
+    llm_model = modelo_permitido(request)  # local o nube
 
     cv_type_labels = {'extenso': 'CV Extenso', 'una_pagina': 'CV de Una Página', 'tecnologia': 'CV de Tecnología', 'tfg': 'CV de TFG'}
 
@@ -964,7 +977,7 @@ def stream_resumen_gemini(request):
     item_id = request.POST.get('id', '')
     cv_type = request.POST.get('cv_type', 'extenso')
     item_name = request.POST.get('name', 'Proyecto')
-    llm_model = request.POST.get('llm_model', 'nvidia-gemma')
+    llm_model = modelo_permitido(request)
 
     def event_stream():
         """Generador en Python (yield): va devolviendo texto a medida que la IA lo genera"""
@@ -987,7 +1000,7 @@ def stream_resumen_gemini(request):
 
             elif platform == 'GitLab':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
@@ -995,7 +1008,7 @@ def stream_resumen_gemini(request):
                     default_branch = rdata.get('default_branch', 'main')
                 else:
                     default_branch = 'main'
-                resp_r = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES)
+                resp_r = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 

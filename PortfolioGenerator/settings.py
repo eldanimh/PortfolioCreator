@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,19 +22,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# En True muestra la pantalla amarilla de error de Django con detalles del código.
+# En producción (PythonAnywhere) DEBE estar en False para que los usuarios vean la página 404/500 estándar.
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+
 # SECURITY WARNING: keep the secret key used in production secret!
-# Se lee de la variable de entorno DJANGO_SECRET_KEY. El valor por defecto SOLO sirve en local.
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-solo-para-local")
+# Se lee de la variable de entorno DJANGO_SECRET_KEY. Solo en local (DEBUG=True) hay valor por defecto;
+# en producción, si falta, la app se para en vez de arrancar con una clave pública.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-solo-para-local"
+    else:
+        raise ImproperlyConfigured("Falta la variable DJANGO_SECRET_KEY")
 
 # Clave (Fernet) con la que se cifran los tokens/API keys de los usuarios en la BD.
 # Generar con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 # Si no se define, se deriva de SECRET_KEY (válido en local; en producción definirla explícitamente).
 FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", "")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# En True muestra la pantalla amarilla de error de Django con detalles del código.
-# En producción (PythonAnywhere) DEBE estar en False para que los usuarios vean la página 404/500 estándar.
-DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
 # Dominios desde los que se permite acceder a la aplicación.
 # Lista separada por comas en DJANGO_ALLOWED_HOSTS (en PythonAnywhere: tuusuario.pythonanywhere.com).
@@ -99,6 +108,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'portfolioCV.context_processors.flags',  # SOCIAL_LOGIN y ALLOW_LOCAL_LLM en las plantillas
             ],
         },
     },
@@ -173,3 +183,18 @@ ACCOUNT_LOGIN_ON_SIGNUP = True      # Tras registrarte por primera vez con GitHu
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 SOCIALACCOUNT_LOGIN_ON_GET = True   # Al pinchar en GitHub se salta una pantalla intermedia de confirmación
 SOCIALACCOUNT_AUTO_SIGNUP = True    # Crea el usuario en nuestra BD automáticamente si GitHub dice que es OK
+
+# --- FLAGS DE ENTORNO ---
+# El modo "LM Studio local" solo tiene sentido en tu ordenador. En producción: False.
+ALLOW_LOCAL_LLM = os.environ.get("ALLOW_LOCAL_LLM", "False") == "True"
+# Botones de login con GitHub/Google (solo donde estén configuradas las apps OAuth).
+SOCIAL_LOGIN = os.environ.get("SOCIAL_LOGIN", "False") == "True"
+
+# --- LOGGING ---
+# Con DEBUG=False Django no muestra los errores 500 en ningún sitio; así salen por consola (docker compose logs).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"django.request": {"handlers": ["console"], "level": "ERROR"}},
+}
