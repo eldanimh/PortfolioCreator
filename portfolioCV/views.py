@@ -42,13 +42,6 @@ def modelo_permitido(request):
         return 'nvidia-gemma'
     return modelo
 
-# ─── Configuración de proxy para PythonAnywhere ───────────
-# PythonAnywhere (hosting gratuito) requiere un proxy HTTP para conexiones externas
-import os
-PA_PROXIES = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
-# Si la variable de entorno PYTHONANYWHERE_DOMAIN existe → estamos en la nube → usar proxy
-# Si no existe → estamos en local → no usar proxy (None)
-
 
 # ─── Página principal ──────────────────────────────────────
 def index(request):
@@ -217,9 +210,6 @@ def gitlab_repos(request):
     repos = []
     error_msg = None
 
-    # Proxy: necesario solo en PythonAnywhere (hosting free) para acceder a Internet
-    proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
-
     try:
         # Petición GET a la API REST de GitLab: GET /api/v4/projects?owned=True&per_page=50
         # params se convierten en query string: ?owned=True&per_page=50
@@ -228,7 +218,6 @@ def gitlab_repos(request):
             headers=headers,                      # Cabeceras HTTP (con el token)
             params={"owned": True, "per_page": 50},  # Query string: solo mis repos, máximo 50
             timeout=10,                           # Máximo 10 segundos esperando respuesta
-            proxies=proxies,                      # Proxy (None en local)
             allow_redirects=False                 # No seguir redirecciones (podrían ir a una IP interna)
         )
         if response.status_code == 200:   # HTTP 200 OK → éxito
@@ -265,8 +254,6 @@ def github_repos(request):
     repos = []
     error_msg = None
 
-    proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
-
     try:
         # GET /user/repos → devuelve los repos del usuario autenticado
         # Query string: ?per_page=50&sort=updated (los 50 más recientes)
@@ -275,7 +262,6 @@ def github_repos(request):
             headers=headers,
             params={"per_page": 50, "sort": "updated"},  # Se convierte en query string en la URL
             timeout=10,
-            proxies=proxies
         )
         if response.status_code == 200:
             repos = response.json()  # Parsea JSON → lista de diccionarios Python
@@ -310,10 +296,8 @@ def openalex_repos(request):
         if profile.openalex_token:
             params["api_key"] = profile.openalex_token  # API key opcional para evitar rate limits
             
-        proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
-            
         try:
-            response = requests.get(url, params=params, timeout=10, proxies=proxies)
+            response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()  # La respuesta viene como JSON
                 results = data.get('results', [])  # Lista de obras científicas
@@ -356,7 +340,7 @@ def openalex_repo_detalle(request, work_id):
         
     try:
         # GET a la API de OpenAlex: obtiene todos los datos de una obra específica
-        resp = requests.get(url, params=params, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(url, params=params, timeout=10)
         if resp.status_code == 200:
             work = resp.json()  # Parsea el JSON de la respuesta
             # Normalizamos la estructura para reutilizar el mismo template que GitHub/GitLab
@@ -404,12 +388,12 @@ def gitlab_repo_detalle(request, repo_id):
 
     try:
         # 1ª petición: GET /projects/{id} → info general del repo (nombre, descripción, URL)
-        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, allow_redirects=False)
         if resp.status_code == 200:
             repo = resp.json()
 
         # 2ª petición: GET /projects/{id}/languages → porcentaje de cada lenguaje
-        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, allow_redirects=False)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()  # Ej: {"Python": 65.2, "JavaScript": 34.8}
     except requests.exceptions.RequestException as e:
@@ -438,11 +422,11 @@ def github_repo_detalle(request, owner, repo_name):
     error_msg = None
 
     try:
-        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10)
         if resp.status_code == 200:
             repo = resp.json()
 
-        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
     except requests.exceptions.RequestException as e:
@@ -470,26 +454,26 @@ def generar_cv_gitlab(request, repo_id):
     tree = []
     readme = ""
     try:
-        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}", headers=headers, timeout=10, allow_redirects=False)
         if resp.status_code == 200:
             repo = resp.json()
         
         default_branch = repo.get('default_branch', 'main')
 
         # 2ª llamada: obtener lenguajes
-        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+        resp_lang = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/languages", headers=headers, timeout=10, allow_redirects=False)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
         # 3ª llamada: obtener el árbol de archivos (recursive=true para subcarpetas)
-        resp_tree = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+        resp_tree = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/tree", headers=headers, params={"recursive": "true", "ref": default_branch}, timeout=10, allow_redirects=False)
         if resp_tree.status_code == 200:
             # Filtramos solo los archivos (tipo 'blob'), ignorando carpetas ('tree')
             tree = [item['path'] for item in resp_tree.json() if item.get('type') == 'blob']
         
         # 4ª llamada: obtener el README
         # Intentamos obtenerlo asumiendo que se llama README.md en la rama principal
-        resp_readme = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+        resp_readme = requests.get(f"{gitlab_api_url(profile)}/projects/{repo_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, allow_redirects=False)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
@@ -516,19 +500,19 @@ def generar_cv_github(request, owner, repo_name):
     tree = []
     readme = ""
     try:
-        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}", headers=headers, timeout=10)
         if resp.status_code == 200:
             repo = resp.json()
 
         default_branch = repo.get('default_branch', 'main')
 
         # 2ª llamada: Lenguajes
-        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10, proxies=PA_PROXIES)
+        resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/languages", headers=headers, timeout=10)
         if resp_lang.status_code == 200:
             languages = resp_lang.json()
 
         # 3ª llamada: Árbol de archivos (API de Git Data)
-        resp_tree = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/git/trees/{default_branch}", headers=headers, params={"recursive": "1"}, timeout=10, proxies=PA_PROXIES)
+        resp_tree = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/git/trees/{default_branch}", headers=headers, params={"recursive": "1"}, timeout=10)
         if resp_tree.status_code == 200:
              # Filtramos para obtener solo paths de archivos que no sean subárboles (blob)
             tree_data = resp_tree.json().get('tree', [])
@@ -540,7 +524,7 @@ def generar_cv_github(request, owner, repo_name):
             "Authorization": f"Bearer {profile.github_token}",
             "Accept": "application/vnd.github.v3.raw"
         }
-        resp_readme = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/readme", headers=headers_readme, timeout=10, proxies=PA_PROXIES)
+        resp_readme = requests.get(f"{GITHUB_API_URL}/repos/{owner}/{repo_name}/readme", headers=headers_readme, timeout=10)
         if resp_readme.status_code == 200:
             readme = resp_readme.text
         else:
@@ -569,7 +553,7 @@ def generar_cv_openalex(request, work_id):
     readme = ""
     
     try:
-        resp = requests.get(url, params=params, timeout=10, proxies=PA_PROXIES)
+        resp = requests.get(url, params=params, timeout=10)
         work = resp.json() if resp.status_code == 200 else {}
         
         if work:
@@ -642,7 +626,7 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
         <body>
             <div class="container">
                 <h1>⚠️ Generación de PDF no disponible</h1>
-                <p>La librería Playwright no está instalada en este entorno (PythonAnywhere). Las limitaciones de espacio en la nube bloquean la ejecución del motor de PDFs.</p>
+                <p>No se pudo generar el PDF en este servidor.</p>
                 <p>Por favor, usa el creador de <strong>CV Unificado (El Carrito)</strong> y dale a la opción de descargar como <strong>HTML</strong>, o corre la aplicación en tu entorno local (Mac).</p>
                 <a href="javascript:history.back()" class="btn">Volver Atrás</a>
             </div>
@@ -876,7 +860,7 @@ def descargar_cv_completo(request):
             nuevo_item = item.copy()
             if item['platform'] == 'GitHub':
                 headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
-                resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES)
+                resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     nuevo_item['description'] = rdata.get('description', '')
@@ -885,7 +869,7 @@ def descargar_cv_completo(request):
                     
             elif item['platform'] == 'GitLab':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, proxies=PA_PROXIES, allow_redirects=False)
+                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, allow_redirects=False)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     nuevo_item['description'] = rdata.get('description', '')
@@ -895,7 +879,7 @@ def descargar_cv_completo(request):
                 params = {}
                 if profile.openalex_token:
                     params['api_key'] = profile.openalex_token
-                resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5, proxies=PA_PROXIES)
+                resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5)
                 if resp.status_code == 200:
                     wdata = resp.json()
                     authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
@@ -909,7 +893,7 @@ def descargar_cv_completo(request):
             
     data['items'] = enriched_items
             
-    # 2. Descargar como HTML si lo pide el botón (útil cuando Playwright falla en PythonAnywhere)
+    # 2. Descargar como HTML si lo pide el botón (útil cuando Playwright falla)
     if request.GET.get('format') == 'html':
         from django.template.loader import render_to_string
         import markdown
@@ -966,7 +950,7 @@ from django.http import StreamingHttpResponse
 def stream_resumen_gemini(request):
     """
     Vista de streaming para devolver chunks (trozos) de texto de la IA en tiempo real.
-    Esta técnica evita el error de Timeout en PythonAnywhere y crea el efecto "máquina de escribir".
+    Esta técnica evita timeouts en peticiones largas y crea el efecto "máquina de escribir".
     """
     if request.method != 'POST':
         return HttpResponse("Method not allowed", status=405)
@@ -987,20 +971,20 @@ def stream_resumen_gemini(request):
         try:
             if platform == 'GitHub':
                 headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
-                resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES)
+                resp = requests.get(f"{GITHUB_API_URL}/repos/{item_id}", headers=headers, timeout=10)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
                     contenido_texto += f"Lenguaje principal: {rdata.get('language', 'N/A')}\n"
                     contenido_texto += f"URL: {rdata.get('html_url', '')}\n"
                 headers_raw = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3.raw"}
-                resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10, proxies=PA_PROXIES)
+                resp_r = requests.get(f"{GITHUB_API_URL}/repos/{item_id}/readme", headers=headers_raw, timeout=10)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
             elif platform == 'GitLab':
                 headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}", headers=headers, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}", headers=headers, timeout=10, allow_redirects=False)
                 if resp.status_code == 200:
                     rdata = resp.json()
                     contenido_texto += f"Descripción: {rdata.get('description', 'N/A')}\n"
@@ -1008,7 +992,7 @@ def stream_resumen_gemini(request):
                     default_branch = rdata.get('default_branch', 'main')
                 else:
                     default_branch = 'main'
-                resp_r = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, proxies=PA_PROXIES, allow_redirects=False)
+                resp_r = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, allow_redirects=False)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
 
@@ -1016,7 +1000,7 @@ def stream_resumen_gemini(request):
                 params = {}
                 if profile.openalex_token:
                     params['api_key'] = profile.openalex_token
-                resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10, proxies=PA_PROXIES)
+                resp = requests.get(f"https://api.openalex.org/works/{item_id}", params=params, timeout=10)
                 if resp.status_code == 200:
                     wdata = resp.json()
                     contenido_texto += f"Título: {wdata.get('title', 'N/A')}\n"
@@ -1060,7 +1044,7 @@ def stream_resumen_gemini(request):
                     "temperature": 0.7,
                     "stream": True  # IMPORTANTE: pedimos respuesta en streaming
                 }
-                resp = requests.post(url, json=payload, stream=True, timeout=180, proxies=PA_PROXIES)
+                resp = requests.post(url, json=payload, stream=True, timeout=180)
                 if resp.status_code == 200:
                     for line in resp.iter_lines():
                         if line:
@@ -1086,17 +1070,9 @@ def stream_resumen_gemini(request):
                     yield "Error: Configura tu API Key de NVIDIA en los tokens."
                     return
                 
-                # Configuración específica para PythonAnywhere (Free Tier requiere proxy para el cliente HTTP)
-                import httpx
-                if PA_PROXIES:
-                    http_client = httpx.Client(proxy=PA_PROXIES["http"])
-                else:
-                    http_client = httpx.Client()
-
                 client = OpenAI(
                   base_url="https://integrate.api.nvidia.com/v1",
                   api_key=profile.nvidia_api_key,
-                  http_client=http_client
                 )
                 
                 # Petición a NVIDIA
@@ -1150,7 +1126,7 @@ def _generar_pdf_completo(user, cv_data):
         <body>
             <div class="container">
                 <h1>⚠️ Generación de PDF no disponible</h1>
-                <p>La librería Playwright no está instalada en este entorno (PythonAnywhere). Las limitaciones de espacio en la nube bloquean la ejecución del motor de PDFs.</p>
+                <p>No se pudo generar el PDF en este servidor.</p>
                 <p>Por favor, utiliza la opción <strong>Descargar HTML</strong> para exportar tu CV profesional desde aquí.</p>
                 <a href="javascript:history.back()" class="btn">Volver Atrás</a>
             </div>

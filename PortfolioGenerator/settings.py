@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # En True muestra la pantalla amarilla de error de Django con detalles del código.
-# En producción (PythonAnywhere) DEBE estar en False para que los usuarios vean la página 404/500 estándar.
+# En producción DEBE estar en False para que los usuarios vean la página 404/500 estándar.
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -44,7 +44,7 @@ FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", "")
 
 
 # Dominios desde los que se permite acceder a la aplicación.
-# Lista separada por comas en DJANGO_ALLOWED_HOSTS (en PythonAnywhere: tuusuario.pythonanywhere.com).
+# Lista separada por comas en DJANGO_ALLOWED_HOSTS (en producción: creator.danimh.dev).
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 
@@ -163,9 +163,8 @@ USE_TZ = True
 # URL base pública desde el navegador (ej: tusitio.com/static/css/style.css)
 STATIC_URL = 'static/'
 
-import os
 # Carpeta FISICA en el servidor donde se juntan todos los estáticos al hacer 'collectstatic'
-# Esto es vital para que PythonAnywhere sepa de dónde servir el CSS en producción.
+# Aquí se juntan los estáticos con `collectstatic`; en producción los sirve WhiteNoise.
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
