@@ -4,6 +4,8 @@
 
 **Reúne tus proyectos de GitHub, GitLab y tus publicaciones de OpenAlex en un único CV / portfolio profesional.**
 
+🌐 **Disponible en:** [creator.danimh.dev](https://creator.danimh.dev)
+
 ![Django](https://img.shields.io/badge/Django-092E20?logo=django&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 ![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)
@@ -52,8 +54,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Crea la base de datos y arranca el servidor
-python manage.py migrate
-python manage.py runserver
+DJANGO_DEBUG=True python manage.py migrate
+ALLOW_LOCAL_LLM=True DJANGO_DEBUG=True python manage.py runserver
 ```
 
 Abre <http://127.0.0.1:8000>, regístrate y entra en **⚙ Tokens** para configurar tus accesos:
@@ -65,9 +67,26 @@ Abre <http://127.0.0.1:8000>, regístrate y entra en **⚙ Tokens** para configu
 | **OpenAlex** | Opcional: una API Key evita los límites de peticiones |
 | **IA** | API Key de NVIDIA (`build.nvidia.com`) o la URL de tu servidor LM Studio local |
 
-Para pasar los tests: `python manage.py test`
+Para pasar los tests: `DJANGO_DEBUG=True python manage.py test`
 
 > ⚠️ Los tokens se guardan en la base de datos local. No publiques tu `db.sqlite3`.
+
+## ☁️ Despliegue
+
+La app está desplegada en [creator.danimh.dev](https://creator.danimh.dev), en un servidor de **AWS Lightsail** con **Docker**: **gunicorn** ejecuta Django y **Caddy** va delante como proxy inverso, con HTTPS automático.
+
+### Variables de entorno
+
+| Variable | Para qué sirve | Por defecto |
+|---|---|---|
+| `DJANGO_SECRET_KEY` | Clave criptográfica de Django | Obligatoria si `DJANGO_DEBUG` no es `True`; en local usa una clave de desarrollo |
+| `FIELD_ENCRYPTION_KEY` | Clave Fernet con la que se cifran los tokens de los usuarios en la BD | Se deriva de `DJANGO_SECRET_KEY` |
+| `DJANGO_DEBUG` | Modo depuración de Django (`True`/`False`) | `False` |
+| `DJANGO_ALLOWED_HOSTS` | Dominios permitidos, separados por comas | `127.0.0.1,localhost` |
+| `SOCIAL_LOGIN` | Muestra los botones de login con GitHub y Google | `False` |
+| `ALLOW_LOCAL_LLM` | Permite usar LM Studio en local; en un servidor debe quedar en `False` | `False` |
+
+> Para generar una `FIELD_ENCRYPTION_KEY`: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
 
 ## 🧩 Resumen parte básica
 

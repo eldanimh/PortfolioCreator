@@ -217,8 +217,8 @@ Las credenciales (Client ID + Secret) se configuran desde el **Admin Site** → 
 3. Registrar ambos en `/admin/` → Social Applications con el sitio correcto
 
 > **Nota:** Las callback URLs deben coincidir:
-> - GitHub: `https://eldanimh.pythonanywhere.com/accounts/github/login/callback/`
-> - Google: `https://eldanimh.pythonanywhere.com/accounts/google/login/callback/`
+> - GitHub: `https://creator.danimh.dev/accounts/github/login/callback/`
+> - Google: `https://creator.danimh.dev/accounts/google/login/callback/`
 
 ---
 
@@ -233,7 +233,7 @@ headers = {
     "Accept": "application/vnd.github.v3+json"
 }
 response = requests.get(f"{GITHUB_API_URL}/user/repos", headers=headers,
-                        params={"per_page": 50}, timeout=10, proxies=PA_PROXIES)
+                        params={"per_page": 50}, timeout=10)
 repos = response.json()
 ```
 
@@ -272,17 +272,6 @@ if abs_idx:
             words[pos] = word
     abstract = " ".join([words[p] for p in sorted(words.keys())])
 ```
-
-### 4.4 Proxy para PythonAnywhere
-Las cuentas gratuitas requieren proxy para acceso a internet:
-```python
-import os
-PA_PROXIES = {
-    "http": "http://proxy.server:3128",
-    "https": "http://proxy.server:3128"
-} if "PYTHONANYWHERE_DOMAIN" in os.environ else None
-```
-Se pasa como `proxies=PA_PROXIES` a todas las llamadas `requests.get/post`.
 
 ---
 
@@ -332,17 +321,10 @@ def stream_resumen_gemini(request):
 
         # 3. Llamar a NVIDIA con streaming
         from openai import OpenAI
-        import httpx
-
-        if PA_PROXIES:
-            http_client = httpx.Client(proxy=PA_PROXIES["http"])
-        else:
-            http_client = httpx.Client()
 
         client = OpenAI(
             base_url="https://integrate.api.nvidia.com/v1",
             api_key=profile.nvidia_api_key,
-            http_client=http_client
         )
 
         response = client.chat.completions.create(
@@ -460,7 +442,7 @@ with sync_playwright() as p:
     browser.close()
 ```
 
-> **Nota:** Playwright no funciona en PythonAnywhere (Free Tier) por falta de espacio. Se usa un `try/except ImportError` para mostrar un mensaje amigable.
+> **Nota:** En producción Playwright y Chromium corren dentro del contenedor de Docker. Si no están disponibles (por ejemplo, en un entorno sin Chromium), un `try/except ImportError` muestra un mensaje amigable y se ofrece la descarga en HTML.
 
 ### 6.4 Exportación HTML
 ```python
@@ -627,20 +609,27 @@ python manage.py test portfolioCV
 
 ---
 
-## 11. Despliegue en PythonAnywhere
+## 11. Despliegue en AWS Lightsail
 
-### Pasos de configuración:
-1. Crear cuenta en pythonanywhere.com
-2. Clonar repositorio: `git clone <url>`
-3. Instalar dependencias: `pip3.12 install --user django requests ...`
-4. Configurar WSGI apuntando a `PortfolioGenerator.wsgi`
-5. Configurar ficheros estáticos: `python manage.py collectstatic`
-6. Crear superusuario: `python manage.py createsuperuser`
+La app corre en un servidor de **AWS Lightsail** con **Docker**, en `https://creator.danimh.dev`.
 
-### Limitaciones del plan gratuito:
-- **Proxy obligatorio** → Todas las llamadas HTTP necesitan `proxies=PA_PROXIES`
-- **Sin Playwright** → El PDF no se puede generar (falta espacio para Chromium)
-- **512 MB de disco** → No instalar dependencias innecesarias
+### Piezas:
+- **gunicorn** → Servidor WSGI de producción que ejecuta Django (sustituye a `runserver`)
+- **Caddy** → Proxy inverso delante de gunicorn; obtiene y renueva el certificado **HTTPS** automáticamente
+- **WhiteNoise** → Sirve los ficheros estáticos recogidos con `collectstatic`
+- **SQLite en un volumen de Docker** → La base de datos sobrevive a reconstruir el contenedor
+- **Playwright + Chromium** → Instalados dentro del contenedor para generar los PDF
+
+### Variables de entorno (fichero `.env`, nunca en el repo):
+- `DJANGO_SECRET_KEY` → Obligatoria con `DEBUG=False`; si falta, la app no arranca
+- `FIELD_ENCRYPTION_KEY` → Clave Fernet para cifrar los tokens de los usuarios
+- `DJANGO_DEBUG=False`, `DJANGO_ALLOWED_HOSTS=creator.danimh.dev`
+- `SOCIAL_LOGIN=True` → Muestra los botones de GitHub y Google
+
+### Actualizar el servidor:
+```bash
+cd ~/despliegue/PortfolioCreator && git pull && cd .. && docker compose up -d --build
+```
 
 ---
 
@@ -679,7 +668,6 @@ social-auth-app-django
 markdown
 openai          ← Cliente para NVIDIA Gemma-2 (protocolo OpenAI)
 playwright      ← Generación de PDF (solo local)
-httpx           ← Cliente HTTP para proxy de PythonAnywhere
 django-allauth  ← Login social con GitHub y Google
 ```
 

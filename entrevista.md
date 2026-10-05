@@ -190,7 +190,7 @@ La cookie solo contiene un **ID aleatorio** (ej: `abc123xyz`). Los datos reales 
 
 - Si compartes ordenador o usas el del profe, puede haber cookies de otro usuario
 - La cookie `sessionid` de otro usuario haría que te logues como él sin querer
-- Antes de la demo: **Ctrl+Shift+Supr → borrar cookies del sitio**
+- Antes de la presentación: **Ctrl+Shift+Supr → borrar cookies del sitio**
 
 ---
 
@@ -461,8 +461,7 @@ def github_repo_detalle(request, owner, repo_name):
     response = requests.get(
         f"https://api.github.com/repos/{owner}/{repo_name}",
         headers=headers,
-        timeout=10,
-        proxies=PA_PROXIES # Vital: Proxy para salir a Internet en PythonAnywhere
+        timeout=10
     )
 
     # 3. Parseamos la respuesta de texto plano a un diccionario Python
@@ -564,13 +563,13 @@ Django traduce `{% static '...' %}` a la URL real del archivo (ej: `/static/port
 | ¿Se usa JavaScript? | Sí, solo para el streaming de la IA (fetch + escritura progresiva) |
 | ¿Qué es `{% csrf_token %}`? | Token anti-falsificación en formularios POST |
 | ¿Qué es `allauth`? | Librería para login social (GitHub, Google) |
-| ¿Por qué `ALLOWED_HOSTS = ['*']`? | Para aceptar peticiones de cualquier dominio (desarrollo/PythonAnywhere) |
+| ¿Qué hace `ALLOWED_HOSTS`? | Lista de dominios desde los que se acepta la app. Se lee de `DJANGO_ALLOWED_HOSTS` y en producción se restringe al dominio real (`creator.danimh.dev`) para evitar ataques con la cabecera `Host` |
 | ¿Qué es `SITE_ID = 1`? | Requerido por allauth para identificar el sitio |
 | ¿Qué es el `SECRET_KEY`? | Clave criptográfica de Django para firmar cookies y tokens |
 | ¿Qué hace `auto_now_add=True`? | Pone la fecha automáticamente al CREAR el registro |
 | ¿Qué hace `on_delete=CASCADE`? | Si borras el User → se borra su Profile automáticamente |
 | ¿Qué es `StreamingHttpResponse`? | Respuesta que envía datos poco a poco (para streaming IA) |
-| ¿Qué es un proxy? | Intermediario de red (necesario en PythonAnywhere free) |
+| ¿Qué es un proxy inverso? | Servidor que recibe las peticiones y las reenvía a la app. En producción, Caddy (con HTTPS) va delante de gunicorn |
 
 ---
 
@@ -660,7 +659,7 @@ Todo este motor no está en `views.py` porque lo gestiona la librería `allauth`
   ```
 ### B. Streaming y la IA (StreamingHttpResponse)
 Si te preguntan: *¿Por qué usas StreamingHttpResponse en vez de un HttpResponse normal para la IA?*
-- Si la IA (Gemini/Llama) tarda 40 segundos en generar el resumen, un `HttpResponse` normal se quedaría "cargando" y servicios como PythonAnywhere cortan la conexión por **Timeout** a los 30 segundos dando error.
+- Si la IA (NVIDIA Gemma) tarda 40 segundos en generar el resumen, un `HttpResponse` normal dejaría al usuario mirando una página en blanco todo ese tiempo, y los servidores y proxies suelen cortar las peticiones largas por **Timeout**.
 - Usando `StreamingHttpResponse` con un `yield` en Python, enviamos el texto **palabra por palabra** en tiempo real. 
 
 **📌 ¿Dónde está esto en el código?**
