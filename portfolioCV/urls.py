@@ -43,6 +43,10 @@ urlpatterns = [
     path('gemini/resumen/', views.generar_resumen_gemini, name='generar_resumen_gemini'),    # POST: página del resumen IA
     path('gemini/stream/', views.stream_resumen_gemini, name='stream_resumen_gemini'),       # POST: streaming de texto IA
 
+    # ─── Página legal ─────────────────────────────────────────────
+    path('privacidad/', views.privacidad, name='privacidad'),
+    path('condiciones/', views.condiciones, name='condiciones'),
+
     # ─── Recursos genéricos (DEBEN ir AL FINAL) ──────────────────
     # <str:recurso> captura CUALQUIER texto → si fuera antes, interceptaría /gitlab/, /github/, etc.
     path('<str:recurso>/eliminar/', views.eliminar_recurso, name='eliminar_recurso'),  # Borrar recurso

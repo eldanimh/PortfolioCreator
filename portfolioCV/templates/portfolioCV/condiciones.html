@@ -1,0 +1,78 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}Condiciones del servicio — Portfolio Creator{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card auth-card-wide" style="max-width: 820px; line-height: 1.7;">
+        <h1 class="auth-title">Condiciones del servicio</h1>
+        <p style="text-align: center; color: var(--text-light);">Última actualización: 6 de octubre de 2026</p>
+
+        <h2>1. Qué es Portfolio Creator</h2>
+        <p>
+            Portfolio Creator (<strong>creator.danimh.dev</strong>) es una herramienta, creada por Daniel Martín Hurtado,
+            que reúne tus proyectos de GitHub y GitLab y tus publicaciones de OpenAlex para generar un CV o portfolio,
+            con resúmenes opcionales redactados por IA. Al registrarte o usar el servicio aceptas estas condiciones.
+        </p>
+
+        <h2>2. Tu cuenta</h2>
+        <p>
+            Eres responsable de mantener la confidencialidad de tu contraseña y de los tokens y claves de API que
+            introduces, así como de toda la actividad realizada desde tu cuenta. Debes proporcionar información veraz.
+        </p>
+
+        <h2>3. Uso aceptable</h2>
+        <p>Te comprometes a no:</p>
+        <ul>
+            <li>usar el servicio con fines ilegales o para vulnerar derechos de terceros;</li>
+            <li>introducir tokens o claves que no te pertenezcan o que no tengas derecho a usar;</li>
+            <li>intentar acceder a datos de otros usuarios, alterar o sobrecargar el servicio, o eludir sus medidas de seguridad;</li>
+            <li>usar el servicio de forma automatizada o abusiva.</li>
+        </ul>
+
+        <h2>4. Tu contenido</h2>
+        <p>
+            Conservas todos los derechos sobre el contenido que añades a tu CV. Nos concedes únicamente el permiso
+            necesario para almacenarlo, procesarlo y mostrártelo con el fin de prestar el servicio. Eres responsable
+            de que lo que incluyas sea tuyo o tengas derecho a usarlo.
+        </p>
+
+        <h2>5. Servicios de terceros e IA</h2>
+        <p>
+            El servicio depende de GitHub, GitLab, OpenAlex, NVIDIA y, opcionalmente, LM Studio, sujetos a sus propias
+            condiciones. Los textos generados por IA pueden contener errores: revísalos antes de usarlos o publicarlos.
+            No nos responsabilizamos de la disponibilidad ni del funcionamiento de estos terceros.
+        </p>
+
+        <h2>6. Disponibilidad y garantías</h2>
+        <p>
+            El servicio se ofrece «tal cual», sin garantía de disponibilidad continua ni de ausencia de errores. Puede
+            modificarse, suspenderse o interrumpirse en cualquier momento.
+        </p>
+
+        <h2>7. Limitación de responsabilidad</h2>
+        <p>
+            En la medida permitida por la ley, no respondemos de daños indirectos ni de la pérdida de datos derivados del
+            uso del servicio. Te recomendamos conservar una copia de tu CV (puedes descargarlo en PDF o HTML).
+        </p>
+
+        <h2>8. Baja y suspensión</h2>
+        <p>
+            Puedes dejar de usar el servicio y solicitar la eliminación de tu cuenta en cualquier momento. Podemos
+            suspender o cerrar cuentas que incumplan estas condiciones.
+        </p>
+
+        <h2>9. Privacidad</h2>
+        <p>El tratamiento de tus datos se describe en la <a href="{% url 'privacidad' %}">política de privacidad</a>.</p>
+
+        <h2>10. Cambios y legislación aplicable</h2>
+        <p>
+            Podemos actualizar estas condiciones; la versión vigente es siempre la publicada en esta página. Se rigen por la
+            legislación española. Para cualquier duda, contacta mediante
+            <a href="https://github.com/eldanimh/PortfolioCreator/issues" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+
+        <p class="auth-footer"><a href="{% url 'privacidad' %}">Política de privacidad</a> · <a href="{% url 'index' %}">← Volver al inicio</a></p>
+    </div>
+</div>
+{% endblock %}

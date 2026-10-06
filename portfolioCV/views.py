@@ -75,6 +75,18 @@ def index(request):
     })
 
 
+# ─── Política de privacidad ────────────────────────────────
+def privacidad(request):
+    """Política de privacidad (página estática)."""
+    return render(request, 'portfolioCV/privacidad.html')
+
+
+# ─── Condiciones del servicio ──────────────────────────────
+def condiciones(request):
+    """Condiciones del Servicio (página estática)."""
+    return render(request, 'portfolioCV/condiciones.html')
+
+
 # ─── Detalle de recurso ────────────────────────────────────
 def detalle_recurso(request, recurso):
     """Muestra el contenido de un recurso específico"""

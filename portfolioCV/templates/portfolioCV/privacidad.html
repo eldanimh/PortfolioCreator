@@ -1,0 +1,69 @@
+{% extends "portfolioCV/base.html" %}
+
+{% block title %}Política de privacidad — Portfolio Creator{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card auth-card-wide" style="max-width: 820px; line-height: 1.7;">
+        <h1 class="auth-title">Política de privacidad</h1>
+        <p style="text-align: center; color: var(--text-light);">Última actualización: 6 de octubre de 2026</p>
+
+        <h2>1. Responsable</h2>
+        <p>
+            Daniel Martín Hurtado
+            (<a href="https://github.com/eldanimh" target="_blank" rel="noopener">@eldanimh</a>),
+            responsable de <strong>creator.danimh.dev</strong>. Para cualquier consulta sobre tus datos puedes
+            abrir una incidencia en
+            <a href="https://github.com/eldanimh/PortfolioCreator/issues" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+
+        <h2>2. Qué datos tratamos</h2>
+        <ul>
+            <li><strong>Cuenta:</strong> nombre de usuario, correo electrónico y contraseña (almacenada solo como hash). Si inicias sesión con GitHub o Google, recibimos de ese proveedor tu nombre de usuario y correo.</li>
+            <li><strong>Tokens y claves que tú introduces:</strong> tokens de GitHub, GitLab y OpenAlex, clave de API de NVIDIA, URL de GitLab y de LM Studio. Se guardan <strong>cifrados</strong> en la base de datos.</li>
+            <li><strong>Contenido de tu CV:</strong> los proyectos y resúmenes que añades y los datos personales que rellenas voluntariamente (nombre, foto, teléfono, correo, LinkedIn, sobre mí).</li>
+            <li><strong>Datos técnicos:</strong> una cookie de sesión y una cookie CSRF, necesarias para el funcionamiento y la seguridad del sitio.</li>
+        </ul>
+
+        <h2>3. Para qué los usamos</h2>
+        <p>
+            Únicamente para prestar el servicio: autenticarte, consultar tus repositorios y publicaciones en
+            GitHub, GitLab y OpenAlex en tu nombre, generar resúmenes con IA y construir tu CV. No usamos tus datos
+            para publicidad ni los vendemos o cedemos a terceros.
+        </p>
+
+        <h2>4. Servicios de terceros</h2>
+        <ul>
+            <li><strong>GitHub, GitLab y OpenAlex:</strong> se consultan con tus tokens para obtener tus proyectos y obras.</li>
+            <li><strong>NVIDIA (IA en la nube):</strong> si pides un resumen con IA, el contenido del repositorio (README, lenguajes, estructura) se envía a NVIDIA con tu propia clave de API. Consulta su política de privacidad.</li>
+            <li><strong>LM Studio (IA local):</strong> el texto se envía solo al servidor que tú indiques.</li>
+            <li><strong>GitHub y Google (inicio de sesión):</strong> solo se usan para identificarte.</li>
+        </ul>
+
+        <h2>5. Cookies</h2>
+        <p>
+            Usamos solo cookies técnicas imprescindibles (sesión y CSRF). No usamos cookies de análisis,
+            publicidad ni seguimiento.
+        </p>
+
+        <h2>6. Conservación</h2>
+        <p>Conservamos tus datos mientras mantengas tu cuenta. Si solicitas su eliminación, se borran junto con tu CV y tus tokens.</p>
+
+        <h2>7. Tus derechos</h2>
+        <p>
+            Puedes acceder, rectificar, suprimir, limitar u oponerte al tratamiento de tus datos, y solicitar su
+            portabilidad, contactando por el medio indicado en el apartado 1. También puedes reclamar ante la
+            <a href="https://www.aepd.es" target="_blank" rel="noopener">Agencia Española de Protección de Datos</a>.
+            Puedes retirar los tokens de tu cuenta en cualquier momento desde la sección «Tokens».
+        </p>
+
+        <h2>8. Seguridad</h2>
+        <p>La web se sirve por HTTPS, las contraseñas se guardan con hash y los tokens de terceros se almacenan cifrados.</p>
+
+        <h2>9. Cambios</h2>
+        <p>Si esta política cambia, se actualizará esta página con una nueva fecha.</p>
+
+        <p class="auth-footer"><a href="{% url 'condiciones' %}">Condiciones del servicio</a> · <a href="{% url 'index' %}">← Volver al inicio</a></p>
+    </div>
+</div>
+{% endblock %}
