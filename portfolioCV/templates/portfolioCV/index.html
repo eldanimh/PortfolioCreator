@@ -12,21 +12,27 @@
 
 <div class="platforms-grid">
     <a href="{% url 'gitlab_repos' %}" class="platform-card platform-gitlab">
-        <div class="platform-icon">🦊</div>
+        <div class="platform-icon">
+            <img src="{% static 'portfolioCV/img/gitlab.svg' %}" alt="GitLab">
+        </div>
         <h2 class="platform-name">GitLab</h2>
         <p class="platform-desc">Accede a tus repositorios de cualquier instancia GitLab</p>
         <span class="platform-arrow">→</span>
     </a>
 
     <a href="{% url 'github_repos' %}" class="platform-card platform-github">
-        <div class="platform-icon">🐙</div>
+        <div class="platform-icon">
+            <img src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub">
+        </div>
         <h2 class="platform-name">GitHub</h2>
         <p class="platform-desc">Accede a tus repositorios en github.com</p>
         <span class="platform-arrow">→</span>
     </a>
 
     <a href="{% url 'openalex_repos' %}" class="platform-card platform-openalex" style="border-left-color: #f39c12;">
-        <div class="platform-icon">📚</div>
+        <div class="platform-icon">
+            <img src="{% static 'portfolioCV/img/openalex-lockup.png' %}" alt="OpenAlex" class="platform-icon-wide">
+        </div>
         <h2 class="platform-name">OpenAlex</h2>
         <p class="platform-desc">Busca publicaciones e información científica de OpenAlex</p>
         <span class="platform-arrow">→</span>

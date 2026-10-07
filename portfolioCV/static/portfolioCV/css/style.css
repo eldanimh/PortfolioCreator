@@ -266,8 +266,22 @@ a:hover {
 }
 
 .platform-icon {
-    font-size: 3.5rem;
+    height: 3.5rem;
     margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.platform-icon img {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+}
+
+.platform-icon img.platform-icon-wide {
+    height: auto;
+    max-height: 2.5rem;
 }
 
 .platform-name {
