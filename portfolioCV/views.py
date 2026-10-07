@@ -1126,7 +1126,7 @@ def stream_resumen_gemini(request):
                     "temperature": 0.7,
                     "stream": True  # IMPORTANTE: pedimos respuesta en streaming
                 }
-                resp = requests.post(url, json=payload, stream=True, timeout=180)
+                resp = requests.post(url, json=payload, stream=True, timeout=600)
                 if resp.status_code == 200:
                     for line in resp.iter_lines():
                         if line:
@@ -1167,7 +1167,9 @@ def stream_resumen_gemini(request):
                   model=config['modelo'],
                   messages=[{"role":"user", "content": prompt}],
                   temperature=0.2,
-                  max_tokens=2048,
+                  # Tope de longitud de la respuesta. Con 2048 el formato TFG salía cortado;
+                  # el modelo para antes si termina, así que un tope alto no cuesta más
+                  max_tokens=16384,
                   stream=True  # IMPORTANTE: activa el streaming
                 )
                 # Anthropic no admite temperature y top_p a la vez
@@ -1190,9 +1192,14 @@ def stream_resumen_gemini(request):
                     response = client.chat.completions.create(**peticion)
                 
                 # Bucle: a medida que el proveedor envía fragmentos (chunks), hacemos yield al navegador
+                cortado = False
                 for chunk in response:
                     if chunk.choices and chunk.choices[0].delta.content is not None:
                         yield chunk.choices[0].delta.content
+                    if chunk.choices and getattr(chunk.choices[0], 'finish_reason', None) == 'length':
+                        cortado = True
+                if cortado:
+                    yield "\n\n> ⚠️ El resumen se ha cortado por el límite de longitud del modelo."
         except Exception as e:
             yield f"\n\nError al generar resumen con IA: {str(e)}"
 
