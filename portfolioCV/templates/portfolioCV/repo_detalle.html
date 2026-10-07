@@ -9,11 +9,13 @@
         <a href="{% url 'gitlab_repos' %}" class="back-link">← Volver a repositorios</a>
     {% elif platform == "OpenAlex" %}
         <a href="{% url 'openalex_repos' %}" class="back-link">← Volver a la búsqueda</a>
+    {% elif platform == "Hugging Face" %}
+        <a href="{% url 'huggingface_repos' %}" class="back-link">← Volver a repositorios</a>
     {% else %}
         <a href="{% url 'github_repos' %}" class="back-link">← Volver a repositorios</a>
     {% endif %}
     <h1 class="page-title">
-        {% if platform == "GitLab" %}<img src="{% static 'portfolioCV/img/gitlab.svg' %}" alt="GitLab" style="height: 1em; width: auto; vertical-align: -0.1em;">{% else %}<img class="only-light" src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;"><img class="only-dark" src="{% static 'portfolioCV/img/github_dark.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;">{% endif %}
+        {% if platform == "GitLab" %}<img src="{% static 'portfolioCV/img/gitlab.svg' %}" alt="GitLab" style="height: 1em; width: auto; vertical-align: -0.1em;">{% elif platform == "Hugging Face" %}<img src="{% static 'portfolioCV/img/hugging_face.svg' %}" alt="Hugging Face" style="height: 1em; width: auto; vertical-align: -0.1em;">{% else %}<img class="only-light" src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;"><img class="only-dark" src="{% static 'portfolioCV/img/github_dark.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;">{% endif %}
         {{ repo.name|default:"Repositorio" }}
     </h1>
 </div>
@@ -54,7 +56,40 @@
                 <span class="detail-value">{{ repo.created_at }}</span>
             </div>
             {% endif %}
-            {% if repo.default_branch %}
+            {% if platform == "Hugging Face" %}
+            <div class="detail-item">
+                <span class="detail-label">Tipo</span>
+                <span class="detail-value"><span class="hf-tipo hf-tipo-{{ repo.hf_tipo }}">{{ repo.hf_tipo_label }}</span>{% if repo.private %} · privado{% endif %}</span>
+            </div>
+            {% if repo.tarea %}
+            <div class="detail-item">
+                <span class="detail-label">{% if repo.hf_tipo == "space" %}SDK{% else %}Tarea{% endif %}</span>
+                <span class="detail-value">{{ repo.tarea }}</span>
+            </div>
+            {% endif %}
+            {% if repo.libreria %}
+            <div class="detail-item">
+                <span class="detail-label">Librería</span>
+                <span class="detail-value">{{ repo.libreria }}</span>
+            </div>
+            {% endif %}
+            {% if repo.licencia %}
+            <div class="detail-item">
+                <span class="detail-label">Licencia</span>
+                <span class="detail-value">{{ repo.licencia }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-item">
+                <span class="detail-label">Popularidad</span>
+                <span class="detail-value">♥ {{ repo.likes }}{% if repo.downloads != None %} · ⬇ {{ repo.downloads }} descargas{% endif %}</span>
+            </div>
+            {% if repo.tags %}
+            <div class="detail-item">
+                <span class="detail-label">Etiquetas</span>
+                <span class="detail-value hf-tags">{% for tag in repo.tags %}<span class="cv-chip">{{ tag }}</span>{% endfor %}</span>
+            </div>
+            {% endif %}
+            {% elif repo.default_branch %}
             <div class="detail-item">
                 <span class="detail-label">Rama principal</span>
                 <span class="detail-value">{{ repo.default_branch }}</span>
@@ -94,6 +129,17 @@
                 <input type="hidden" name="name" value="{{ repo.name }}">
                 <button type="submit" class="btn btn-large" style="background: #2ea043; border-color: #2ea043; color: white;">+ Añadir a Mi CV Profesional</button>
             </form>
+        {% elif platform == "Hugging Face" %}
+            <a href="{% url 'generar_cv_huggingface' hf_tipo owner repo_name %}" class="btn btn-primary btn-large">
+                📄 Descargar CV en PDF
+            </a>
+            <form method="post" action="{% url 'agregar_al_cv' %}">
+                {% csrf_token %}
+                <input type="hidden" name="platform" value="Hugging Face">
+                <input type="hidden" name="id" value="{{ hf_tipo }}/{{ owner }}/{{ repo_name }}">
+                <input type="hidden" name="name" value="{{ repo.name }}">
+                <button type="submit" class="btn btn-large" style="background: #2ea043; border-color: #2ea043; color: white;">+ Añadir a Mi CV Profesional</button>
+            </form>
         {% elif platform == "OpenAlex" %}
             <a href="{% url 'generar_cv_openalex' work_id %}" class="btn btn-primary btn-large">
                 📄 Descargar CV/Resumen en PDF
@@ -121,7 +167,7 @@
 
     <div class="detail-card gemini-section">
         <h2 class="detail-section-title">🤖 Resumen con Inteligencia Artificial</h2>
-        <p style="color: #57606a; margin-bottom: 1rem;">Genera un resumen profesional de este proyecto usando Gemini AI. Elige el tipo de CV:</p>
+        <p style="color: #57606a; margin-bottom: 1rem;">Genera un resumen profesional de este proyecto con IA. Elige el tipo de CV:</p>
         <form method="post" action="{% url 'generar_resumen_gemini' %}">
             {% csrf_token %}
             {% if platform == "GitLab" %}
@@ -130,6 +176,9 @@
             {% elif platform == "OpenAlex" %}
                 <input type="hidden" name="platform" value="OpenAlex">
                 <input type="hidden" name="id" value="{{ work_id }}">
+            {% elif platform == "Hugging Face" %}
+                <input type="hidden" name="platform" value="Hugging Face">
+                <input type="hidden" name="id" value="{{ hf_tipo }}/{{ owner }}/{{ repo_name }}">
             {% else %}
                 <input type="hidden" name="platform" value="GitHub">
                 <input type="hidden" name="id" value="{{ owner }}/{{ repo_name }}">

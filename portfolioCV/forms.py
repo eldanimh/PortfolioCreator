@@ -29,7 +29,7 @@ class TokensForm(forms.ModelForm):
     class Meta:
         model = UserProfile  # Este formulario edita objetos de tipo UserProfile
         # Campos que se muestran en el formulario (orden en que aparecen)
-        fields = ['github_token', 'gitlab_url', 'gitlab_token', 'openalex_token', 'ia_base_url', 'nvidia_api_key', 'ia_model', 'github_username', 'gitlab_username', 'lm_studio_url']
+        fields = ['github_token', 'gitlab_url', 'gitlab_token', 'openalex_token', 'huggingface_token', 'huggingface_username', 'ia_base_url', 'nvidia_api_key', 'ia_model', 'github_username', 'gitlab_username', 'lm_studio_url']
         # Widgets: controlan CÓMO se renderiza cada campo en el HTML
         widgets = {
             # PasswordInput: muestra el campo como tipo password (****) para ocultar el token
@@ -37,6 +37,8 @@ class TokensForm(forms.ModelForm):
             'gitlab_url': forms.URLInput(attrs={'placeholder': 'https://gitlab.com'}),
             'gitlab_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitLab'}),
             'openalex_token': forms.PasswordInput(attrs={'placeholder': 'API Key de OpenAlex (Opcional)'}),
+            'huggingface_token': forms.PasswordInput(attrs={'placeholder': 'hf_… (opcional: para ver tus repos privados)'}),
+            'huggingface_username': forms.TextInput(attrs={'placeholder': 'Usuario de Hugging Face'}),
             'ia_base_url': forms.URLInput(attrs={'placeholder': 'Se detecta por la API Key'}),
             'nvidia_api_key': forms.PasswordInput(attrs={'placeholder': 'nvapi-…, sk-…, gsk_…, AIza…'}),
             'ia_model': forms.TextInput(attrs={'placeholder': 'El recomendado para tu proveedor'}),
@@ -52,6 +54,8 @@ class TokensForm(forms.ModelForm):
             'gitlab_url': 'URL de tu GitLab (vacío = gitlab.com)',
             'gitlab_token': 'GitLab Personal Access Token',
             'openalex_token': 'OpenAlex API Key',
+            'huggingface_token': 'Hugging Face Access Token',
+            'huggingface_username': 'Nombre de usuario en Hugging Face',
             'ia_base_url': 'URL del proveedor de IA (opcional)',
             'nvidia_api_key': 'API Key de IA',
             'ia_model': 'Modelo de IA (opcional)',
@@ -62,7 +66,7 @@ class TokensForm(forms.ModelForm):
 
     # Campos secretos: PasswordInput no reenvía su valor al navegador, así que
     # si llegan vacíos se conserva lo guardado (salvo que se marque "Eliminar")
-    SECRET_FIELDS = ['github_token', 'gitlab_token', 'openalex_token', 'nvidia_api_key']
+    SECRET_FIELDS = ['github_token', 'gitlab_token', 'openalex_token', 'huggingface_token', 'nvidia_api_key']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

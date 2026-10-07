@@ -30,6 +30,10 @@ class UserProfile(models.Model):
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     # API Key de OpenAlex (opcional, para evitar límites de peticiones)
     openalex_token = EncryptedCharField(blank=True, default='')
+    # Token de Hugging Face (opcional: sin él solo se ven los repos públicos)
+    huggingface_token = EncryptedCharField(blank=True, default='')
+    # Usuario de Hugging Face (si hay token y se deja vacío, se deduce del token)
+    huggingface_username = models.CharField(max_length=150, blank=True, default='')
     # API Key del proveedor de IA en la nube (se llama nvidia_* por historia: NVIDIA es el
     # proveedor por defecto, pero vale la de cualquier API compatible con OpenAI)
     nvidia_api_key = EncryptedCharField(blank=True, default='')

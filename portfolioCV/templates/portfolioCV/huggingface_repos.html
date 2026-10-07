@@ -1,0 +1,60 @@
+{% extends "portfolioCV/base.html" %}
+{% load static %}
+
+{% block title %}Hugging Face — Repositorios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{% url 'index' %}" class="back-link">← Volver al inicio</a>
+    <h1 class="page-title">
+        <img src="{% static 'portfolioCV/img/hugging_face.svg' %}" alt="Hugging Face" style="height: 1em; width: auto; vertical-align: -0.1em;">
+        Repositorios en Hugging Face
+    </h1>
+</div>
+
+{% if error_msg %}
+<div class="alert alert-error">
+    {{ error_msg }}
+</div>
+{% endif %}
+
+{% if repos %}
+<div class="repos-grid">
+    {% for repo in repos %}
+    <div class="repo-card">
+        <div class="repo-header">
+            <h3 class="repo-name">{{ repo.name }}</h3>
+            <span class="repo-badge {% if repo.private %}badge-private{% else %}badge-public{% endif %}">
+                {% if repo.private %}private{% else %}public{% endif %}
+            </span>
+        </div>
+
+        <p class="repo-desc">
+            <span class="hf-tipo hf-tipo-{{ repo.tipo }}">{{ repo.tipo_label }}</span>
+            {% if repo.subtitulo %}<span class="repo-lang">● {{ repo.subtitulo }}</span>{% endif %}
+        </p>
+
+        <div class="repo-meta">
+            <span>♥ {{ repo.likes }}</span>
+            {% if repo.downloads != None %}<span>⬇ {{ repo.downloads }}</span>{% endif %}
+        </div>
+
+        <div class="repo-actions" style="display: flex; gap: 5px; align-items: center;">
+            <a href="{% url 'huggingface_repo_detalle' repo.tipo repo.owner repo.name %}" class="btn btn-small btn-primary">Ver detalle y crear PDF</a>
+            <form method="post" action="{% url 'agregar_al_cv' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="platform" value="Hugging Face">
+                <input type="hidden" name="id" value="{{ repo.tipo }}/{{ repo.id }}">
+                <input type="hidden" name="name" value="{{ repo.name }}">
+                <button type="submit" class="btn btn-small" style="background: #2ea043; border-color: #2ea043; color: white;" title="Añadir a Mi CV Profesional">+ Añadir al CV</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif not error_msg %}
+<div class="empty-state-container">
+    <p class="empty-state">No se encontraron modelos, datasets ni Spaces.</p>
+</div>
+{% endif %}
+{% endblock %}

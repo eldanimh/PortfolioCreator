@@ -495,3 +495,84 @@ class AislamientoRecursosTests(TestCase):
         self._crear('dani', 'notas', 'uno')
         respuesta = self._crear('dani', 'notas', 'dos')
         self.assertContains(respuesta, 'Ya tienes un recurso con ese nombre.')
+
+
+class HuggingFaceTests(TestCase):
+    """Integración con Hugging Face (API simulada con mocks)"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='hfuser', password='pw')
+        self.profile = self.user.profile
+        self.profile.huggingface_username = 'ana'
+        self.profile.save()
+        self.client.login(username='hfuser', password='pw')
+
+    @staticmethod
+    def _respuesta(datos, status=200, texto=''):
+        from unittest.mock import MagicMock
+        r = MagicMock(status_code=status, text=texto)
+        r.json.return_value = datos
+        return r
+
+    @patch('portfolioCV.huggingface.requests.get')
+    def test_lista_modelos_datasets_y_spaces(self, mock_get):
+        def fake_get(url, **kwargs):
+            if url.endswith('/api/models'):
+                return self._respuesta([{'id': 'ana/modelo', 'lastModified': '2026-01-02', 'pipeline_tag': 'text-generation', 'likes': 3}])
+            if url.endswith('/api/datasets'):
+                return self._respuesta([{'id': 'ana/datos', 'lastModified': '2026-03-01'}])
+            return self._respuesta([{'id': 'ana/demo', 'lastModified': '2026-02-01', 'sdk': 'gradio'}])
+        mock_get.side_effect = fake_get
+
+        response = self.client.get(reverse('huggingface_repos'))
+        self.assertEqual(response.status_code, 200)
+        nombres = [r['name'] for r in response.context['repos']]
+        self.assertEqual(nombres, ['datos', 'demo', 'modelo'])  # del más reciente al más antiguo
+        self.assertContains(response, 'text-generation')
+        self.assertContains(response, reverse('huggingface_repo_detalle', args=['space', 'ana', 'demo']))
+
+    def test_sin_usuario_ni_token_manda_a_tokens(self):
+        self.profile.huggingface_username = ''
+        self.profile.save()
+        self.assertRedirects(self.client.get(reverse('huggingface_repos')), reverse('configurar_tokens'))
+
+    def test_tipo_desconocido_da_404(self):
+        response = self.client.get(reverse('huggingface_repo_detalle', args=['otro', 'ana', 'x']))
+        self.assertEqual(response.status_code, 404)
+
+    @patch('portfolioCV.huggingface.requests.get')
+    def test_detalle_de_un_modelo(self, mock_get):
+        mock_get.return_value = self._respuesta({
+            'id': 'ana/modelo', 'pipeline_tag': 'text-generation', 'library_name': 'transformers',
+            'cardData': {'license': 'apache-2.0'}, 'tags': ['pytorch', 'license:apache-2.0'],
+            'siblings': [{'rfilename': 'config.json'}], 'likes': 7, 'downloads': 42,
+        })
+        response = self.client.get(reverse('huggingface_repo_detalle', args=['model', 'ana', 'modelo']))
+        self.assertContains(response, 'https://huggingface.co/ana/modelo')
+        self.assertContains(response, 'apache-2.0')
+        self.assertContains(response, 'transformers')
+        self.assertContains(response, 'pytorch')
+        self.assertNotContains(response, 'license:apache-2.0')  # etiquetas técnicas fuera
+
+    @patch('portfolioCV.huggingface.requests.get')
+    def test_readme_sin_cabecera_yaml(self, mock_get):
+        from . import huggingface as hf
+        mock_get.return_value = self._respuesta(None, texto='---\nlicense: mit\ntags: [a]\n---\n\n# Mi modelo\nTexto')
+        self.assertEqual(hf.readme_repo(self.profile, 'model', 'ana/modelo'), '# Mi modelo\nTexto')
+        url = mock_get.call_args.args[0]
+        self.assertEqual(url, 'https://huggingface.co/ana/modelo/raw/main/README.md')
+
+    @patch('portfolioCV.huggingface.requests.get')
+    def test_usuario_deducido_del_token(self, mock_get):
+        from . import huggingface as hf
+        self.profile.huggingface_username = ''
+        self.profile.huggingface_token = 'hf_x'
+        mock_get.return_value = self._respuesta({'name': 'ana'})
+        self.assertEqual(hf.usuario_hf(self.profile), 'ana')
+        self.assertEqual(mock_get.call_args.kwargs['headers'], {'Authorization': 'Bearer hf_x'})
+
+    def test_imagenes_del_readme_en_el_pdf(self):
+        from .views import _readme_a_html
+        repo = {'html_url': 'https://huggingface.co/datasets/ana/datos', 'default_branch': 'main'}
+        html = _readme_a_html('![grafica](img/g.png)', repo, 'Hugging Face')
+        self.assertIn('src="https://huggingface.co/datasets/ana/datos/resolve/main/img/g.png"', html)

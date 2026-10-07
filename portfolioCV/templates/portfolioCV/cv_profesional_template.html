@@ -222,7 +222,7 @@
                     </div>
                     
                     <div class="project-meta">
-                        <span class="badge" style="background: {% if item.platform == 'GitHub' %}#24292f; color: white;{% elif item.platform == 'OpenAlex' %}#f39c12; color: white;{% elif item.platform == 'IA Summary' %}#2ea043; color: white;{% else %}#fc6d26; color: white;{% endif %} border: none;">
+                        <span class="badge" style="background: {% if item.platform == 'GitHub' %}#24292f; color: white;{% elif item.platform == 'OpenAlex' %}#f39c12; color: white;{% elif item.platform == 'Hugging Face' %}#ffd21e; color: #3a3b45;{% elif item.platform == 'IA Summary' %}#2ea043; color: white;{% else %}#fc6d26; color: white;{% endif %} border: none;">
                             {{ item.platform }}
                         </span>
                         {% if item.language %}

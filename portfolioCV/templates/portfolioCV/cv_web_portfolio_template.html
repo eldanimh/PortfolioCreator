@@ -310,6 +310,7 @@
         .badge.gitlab { background-color: #fc6d26; color: white; border-color: #fc6d26; }
         .badge.openalex { background-color: #f39c12; color: white; border-color: #f39c12; }
         .badge.ia { background-color: #2ea043; color: white; border-color: #2ea043; }
+        .badge.huggingface { background-color: #ffd21e; color: #3a3b45; border-color: #ffd21e; }
 
         .project-desc {
             color: var(--text-muted);
@@ -466,7 +467,7 @@
                         <div class="project-header">
                             <h3 class="project-title">{{ item.name }}</h3>
                             <div class="badge-container">
-                                <span class="badge {% if item.platform == 'GitHub' %}github{% elif item.platform == 'GitLab' %}gitlab{% elif item.platform == 'OpenAlex' %}openalex{% elif item.platform == 'IA Summary' %}ia{% endif %}">
+                                <span class="badge {% if item.platform == 'GitHub' %}github{% elif item.platform == 'GitLab' %}gitlab{% elif item.platform == 'OpenAlex' %}openalex{% elif item.platform == 'Hugging Face' %}huggingface{% elif item.platform == 'IA Summary' %}ia{% endif %}">
                                     {{ item.platform }}
                                 </span>
                                 {% if item.language %}

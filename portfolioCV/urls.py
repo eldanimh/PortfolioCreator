@@ -6,7 +6,7 @@ from . import views
 # Lista de TODAS las URLs de la app portfolioCV
 # Django recorre esta lista de ARRIBA a ABAJO buscando coincidencias
 urlpatterns = [
-    # ─── Página principal (/): muestra GitLab, GitHub, OpenAlex ───
+    # ─── Página principal (/): muestra GitHub, GitLab, OpenAlex y Hugging Face ───
     path('', views.index, name='index'),
 
     # ─── Autenticación ─────────────────────────────────────────────
@@ -26,6 +26,11 @@ urlpatterns = [
     path('github/', views.github_repos, name='github_repos'),                                       # Lista repos
     path('github/<str:owner>/<str:repo_name>/', views.github_repo_detalle, name='github_repo_detalle'),  # Detalle: /github/eldanimh/mi-repo/
     path('github/<str:owner>/<str:repo_name>/cv/', views.generar_cv_github, name='generar_cv_github'),   # PDF de ese repo
+
+    # ─── Hugging Face (modelos, datasets y Spaces) ────────────────
+    path('huggingface/', views.huggingface_repos, name='huggingface_repos'),
+    path('huggingface/<str:tipo>/<str:owner>/<str:repo_name>/', views.huggingface_repo_detalle, name='huggingface_repo_detalle'),  # /huggingface/model/eldanimh/mi-modelo/
+    path('huggingface/<str:tipo>/<str:owner>/<str:repo_name>/cv/', views.generar_cv_huggingface, name='generar_cv_huggingface'),
 
     # ─── OpenAlex API (búsqueda de bibliografía) ──────────────────
     path('openalex/', views.openalex_repos, name='openalex_repos'),                          # Buscador con query string ?search=

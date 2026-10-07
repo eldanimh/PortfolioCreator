@@ -20,6 +20,7 @@ from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
 from .seguridad import url_externa_segura, pagina_pdf_segura  # Anti-SSRF en URLs del usuario y en el PDF
 from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
+from . import huggingface as hf  # Modelos, datasets y Spaces de Hugging Face
 from django.conf import settings
 
 # ─── URLs base de las APIs externas ────────────────────────
@@ -340,6 +341,79 @@ def github_repos(request):
         'error_msg': error_msg,
         'platform': 'GitHub',
     })
+
+
+# ─── Hugging Face - Modelos, datasets y Spaces ─────────────
+def _tipo_hf_valido(tipo):
+    if tipo not in hf.TIPOS:
+        raise Http404("Tipo de repositorio de Hugging Face desconocido")
+
+
+@login_required
+def huggingface_repos(request):
+    """Lista los modelos, datasets y Spaces del usuario en Hugging Face"""
+    profile = get_object_or_404(UserProfile, user=request.user)
+
+    if not profile.huggingface_token and not profile.huggingface_username:
+        messages.warning(request, 'Configura tu usuario (o tu token) de Hugging Face primero.')
+        return redirect('configurar_tokens')
+
+    repos = []
+    error_msg = None
+    try:
+        repos = hf.listar_repos(profile)
+        if not repos and not hf.usuario_hf(profile):
+            error_msg = "No se pudo identificar tu usuario de Hugging Face. Revisa el token o escribe tu usuario."
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"Error al conectar con Hugging Face (código {e.response.status_code}). Verifica tu token."
+    except requests.exceptions.RequestException as e:
+        error_msg = f"No se pudo conectar con Hugging Face: {str(e)}"
+
+    return render(request, 'portfolioCV/huggingface_repos.html', {
+        'repos': repos,
+        'error_msg': error_msg,
+        'platform': 'Hugging Face',
+    })
+
+
+@login_required
+def huggingface_repo_detalle(request, tipo, owner, repo_name):
+    """Detalle de un modelo, dataset o Space: /huggingface/<tipo>/<owner>/<repo_name>/"""
+    _tipo_hf_valido(tipo)
+    profile = get_object_or_404(UserProfile, user=request.user)
+    repo = None
+    error_msg = None
+    try:
+        repo = hf.detalle_repo(profile, tipo, f"{owner}/{repo_name}")
+        if repo is None:
+            error_msg = "No se encontró el repositorio en Hugging Face (o es privado y falta el token)."
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+
+    return render(request, 'portfolioCV/repo_detalle.html', {
+        'repo': repo,
+        'languages': [],
+        'error_msg': error_msg,
+        'platform': 'Hugging Face',
+        'hf_tipo': tipo,
+        'owner': owner,
+        'repo_name': repo_name,
+    })
+
+
+@login_required
+def generar_cv_huggingface(request, tipo, owner, repo_name):
+    """PDF de un repo de Hugging Face: datos, ficheros y README (model card)"""
+    _tipo_hf_valido(tipo)
+    profile = get_object_or_404(UserProfile, user=request.user)
+    repo_id = f"{owner}/{repo_name}"
+    repo, readme = {}, ""
+    try:
+        repo = hf.detalle_repo(profile, tipo, repo_id) or {}
+        readme = hf.readme_repo(profile, tipo, repo_id) or "No se encontró README."
+    except requests.exceptions.RequestException:
+        pass
+    return _generar_pdf(request.user, repo, {}, repo.get('ficheros', []), readme, 'Hugging Face')
 
 
 # ─── OpenAlex - Bibliografías ──────────────────────────────
@@ -713,6 +787,8 @@ def _readme_a_html(readme, repo, platform):
         base = f"https://raw.githubusercontent.com/{repo['full_name']}/{rama}/"
     elif platform == 'GitLab' and repo.get('web_url'):
         base = f"{repo['web_url'].rstrip('/')}/-/raw/{rama}/"
+    elif platform == 'Hugging Face' and repo.get('html_url'):
+        base = f"{repo['html_url'].rstrip('/')}/resolve/{rama}/"
     else:
         base = None
     if base:
@@ -996,6 +1072,15 @@ def descargar_cv_completo(request):
                     nuevo_item['description'] = rdata.get('description', '')
                     nuevo_item['url'] = rdata.get('web_url', '')
                     
+            elif item['platform'] == 'Hugging Face':
+                tipo, _, repo_id = item['id'].partition('/')
+                if tipo in hf.TIPOS:
+                    rdata = hf.detalle_repo(profile, tipo, repo_id)
+                    if rdata:
+                        nuevo_item['description'] = rdata['description']
+                        nuevo_item['url'] = rdata['html_url']
+                        nuevo_item['language'] = rdata['tarea'] or rdata['hf_tipo_label']
+
             elif item['platform'] == 'OpenAlex':
                 params = {}
                 if profile.openalex_token:
@@ -1115,6 +1200,22 @@ def stream_resumen_gemini(request):
                 resp_r = requests.get(f"{gitlab_api_url(profile)}/projects/{item_id}/repository/files/README.md/raw", headers=headers, params={"ref": default_branch}, timeout=10, allow_redirects=False)
                 if resp_r.status_code == 200:
                     contenido_texto += f"\nREADME:\n{resp_r.text[:4000]}\n"
+
+            elif platform == 'Hugging Face':
+                tipo, _, repo_id = item_id.partition('/')
+                if tipo in hf.TIPOS:
+                    rdata = hf.detalle_repo(profile, tipo, repo_id)
+                    if rdata:
+                        contenido_texto += f"Tipo: {rdata['hf_tipo_label']} de Hugging Face\n"
+                        contenido_texto += f"Descripción: {rdata['description'] or 'N/A'}\n"
+                        contenido_texto += f"Tarea: {rdata['tarea'] or 'N/A'}\n"
+                        contenido_texto += f"Librería: {rdata['libreria'] or 'N/A'}\n"
+                        contenido_texto += f"Etiquetas: {', '.join(rdata['tags'])}\n"
+                        contenido_texto += f"Ficheros: {', '.join(rdata['ficheros'][:50])}\n"
+                        contenido_texto += f"URL: {rdata['html_url']}\n"
+                    readme = hf.readme_repo(profile, tipo, repo_id)
+                    if readme:
+                        contenido_texto += f"\nREADME:\n{readme[:4000]}\n"
 
             elif platform == 'OpenAlex':
                 params = {}

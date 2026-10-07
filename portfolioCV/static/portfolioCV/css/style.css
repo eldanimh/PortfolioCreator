@@ -368,6 +368,33 @@ a:hover {
     background: linear-gradient(90deg, #24292f, #586069, #24292f);
 }
 
+.platform-huggingface::before {
+    background: linear-gradient(90deg, #ffd21e, #ffac03, #ffd21e);
+}
+
+/* Tipo de repo de Hugging Face: modelo, dataset o Space */
+.hf-tipo {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    margin-right: 0.4rem;
+}
+
+.hf-tipo-model { background: #fff4c2; color: #7a5b00; }
+.hf-tipo-dataset { background: #e0ecff; color: #1e40af; }
+.hf-tipo-space { background: #f3e8ff; color: #6b21a8; }
+:root[data-theme="dark"] .hf-tipo-model { background: #3a300c; color: #ffd21e; }
+:root[data-theme="dark"] .hf-tipo-dataset { background: #14233f; color: #93c5fd; }
+:root[data-theme="dark"] .hf-tipo-space { background: #2a1a40; color: #d8b4fe; }
+
+.hf-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
 .platform-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);

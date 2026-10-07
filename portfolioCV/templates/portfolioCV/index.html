@@ -7,7 +7,7 @@
 <div class="hero-section">
     <img src="{% static 'portfolioCV/img/logo.svg' %}" alt="Portfolio Creator Logo"
         style="width: 350px; height: auto; margin: 0 auto 1.5rem auto; display: block;">
-    <p class="hero-subtitle">Elige entre GitHub, GitLab y OpenAlex:</p>
+    <p class="hero-subtitle">Elige entre GitHub, GitLab, OpenAlex y Hugging Face:</p>
 </div>
 
 <div class="platforms-grid">
@@ -41,6 +41,15 @@
                 class="platform-icon-wide only-dark">
         </div>
         <p class="platform-desc">Busca publicaciones e información científica de OpenAlex</p>
+        <span class="platform-arrow">→</span>
+    </a>
+
+    <a href="{% url 'huggingface_repos' %}" class="platform-card platform-huggingface">
+        <div class="platform-icon">
+            <img src="{% static 'portfolioCV/img/hugging_face.svg' %}" alt="Hugging Face">
+        </div>
+        <h2 class="platform-name">Hugging Face</h2>
+        <p class="platform-desc">Accede a tus modelos, datasets y Spaces</p>
         <span class="platform-arrow">→</span>
     </a>
 </div>
