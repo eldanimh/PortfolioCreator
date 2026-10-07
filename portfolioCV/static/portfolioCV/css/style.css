@@ -15,6 +15,8 @@
     --accent: #0f3460;
     --highlight: #e94560;
     --highlight-hover: #d13550;
+    --heading: #1a1a2e;
+    --accent-text: #0f3460;
     --text: #2d2d3a;
     --text-light: #6b7280;
     --bg: #f8f9fc;
@@ -147,6 +149,92 @@ a:hover {
     letter-spacing: 0.2px;
 }
 
+/* ─── Modo oscuro ───────────────────────────────────────── */
+:root { color-scheme: light; }
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --primary: #0f1020;
+    --primary-light: #1c2340;
+    --accent: #7aa7ff;
+    --accent-text: #7aa7ff;
+    --heading: #f1f3f9;
+    --text: #d6d9e3;
+    --text-light: #9aa1b2;
+    --bg: #0d0f17;
+    --card-bg: #171a26;
+    --border: #2a2f42;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .alert-success,
+:root[data-theme="dark"] .badge-public { background: #0f2a22; color: #6ee7b7; }
+:root[data-theme="dark"] .alert-info,
+:root[data-theme="dark"] .badge-internal { background: #14233f; color: #93c5fd; }
+:root[data-theme="dark"] .alert-warning,
+:root[data-theme="dark"] .badge-private { background: #33270d; color: #fcd34d; }
+:root[data-theme="dark"] .alert-error { background: #3a1517; color: #fca5a5; }
+
+:root[data-theme="dark"] .btn-github { background: #2b3138; }
+:root[data-theme="dark"] .btn-github:hover { background: #363d46; }
+:root[data-theme="dark"] .btn-google { background: #1f2330; color: #e3e5ea; border-color: #3a4054; }
+:root[data-theme="dark"] .btn-google:hover { background: #272c3c; color: #e3e5ea; }
+
+:root[data-theme="dark"] .cv-item-badge { background: #262b3d; color: #aab1c3; }
+:root[data-theme="dark"] .cv-item-id { color: #aab1c3; }
+
+:root[data-theme="dark"] .gemini-section {
+    border-color: #4c3a86;
+    background: linear-gradient(135deg, #1d1832 0%, #191a2e 100%);
+}
+:root[data-theme="dark"] .gemini-result-card { border-color: #4c3a86; }
+:root[data-theme="dark"] .cv-type-option input[type="radio"]:checked + .cv-type-card { background: #2a2050; }
+:root[data-theme="dark"] .gemini-content code,
+:root[data-theme="dark"] .gemini-content pre,
+:root[data-theme="dark"] .gemini-content th { background: #0f1220; }
+:root[data-theme="dark"] .gemini-content code { color: #ff8b9a; }
+
+/* Estilos en línea con colores claros fijos en las plantillas */
+:root[data-theme="dark"] [style*="#f6f8fa"] { background: #0f1220 !important; border-color: #2a2f42 !important; }
+:root[data-theme="dark"] [style*="#ffebe9"] { background: #3a1517 !important; color: #fca5a5 !important; border-color: #6b2227 !important; }
+:root[data-theme="dark"] [style*="#57606a"],
+:root[data-theme="dark"] [style*="#8c959f"] { color: #9aa1b2 !important; }
+:root[data-theme="dark"] [style*="#24292f"] { color: #e6e8ef !important; }
+:root[data-theme="dark"] [style*="#eaecef"] { border-color: #2a2f42 !important; }
+
+/* Imágenes distintas según el tema */
+:root[data-theme="dark"] .only-light { display: none !important; }
+:root:not([data-theme="dark"]) .only-dark { display: none !important; }
+
+/* ─── Selector de tema ──────────────────────────────────── */
+.theme-toggle {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 1rem;
+    flex-shrink: 0;
+    transition: var(--transition);
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .icon-sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
 /* ─── Messages ──────────────────────────────────────────── */
 .messages-container {
     max-width: 900px;
@@ -204,7 +292,7 @@ a:hover {
 .hero-title {
     font-size: 2.8rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--primary), var(--accent), var(--highlight));
+    background: linear-gradient(135deg, var(--heading), var(--accent-text), var(--highlight));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -287,7 +375,7 @@ a:hover {
 .platform-name {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--heading);
     margin-bottom: 0.5rem;
 }
 
@@ -393,7 +481,7 @@ a:hover {
 .auth-title {
     font-size: 1.8rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--heading);
     margin-bottom: 0.5rem;
     text-align: center;
 }
@@ -523,7 +611,7 @@ a:hover {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.1);
-    background: var(--white);
+    background: var(--card-bg);
 }
 
 .form-help {
@@ -557,7 +645,7 @@ a:hover {
 .help-card h3 {
     font-size: 1rem;
     margin-bottom: 0.5rem;
-    color: var(--primary);
+    color: var(--heading);
 }
 
 .help-card p {
@@ -608,7 +696,7 @@ a:hover {
 .repo-name {
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--heading);
     word-break: break-word;
 }
 
@@ -681,7 +769,7 @@ a:hover {
 .page-title {
     font-size: 2rem;
     font-weight: 800;
-    color: var(--primary);
+    color: var(--heading);
     letter-spacing: -0.5px;
 }
 
@@ -703,7 +791,7 @@ a:hover {
 .detail-section-title {
     font-size: 1.3rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--heading);
     margin-bottom: 1.25rem;
     padding-bottom: 0.75rem;
     border-bottom: 2px solid var(--bg);
@@ -799,7 +887,7 @@ a:hover {
 .section-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--heading);
     margin-bottom: 1rem;
 }
 
@@ -827,7 +915,7 @@ a:hover {
 
 .recurso-item a {
     font-weight: 600;
-    color: var(--primary);
+    color: var(--heading);
 }
 
 .recurso-item a:hover {
@@ -850,7 +938,7 @@ a:hover {
 .form-title {
     font-size: 1.15rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--heading);
     margin-bottom: 1rem;
 }
 
@@ -1195,7 +1283,7 @@ a:hover {
     align-items: center;
     text-align: center;
     padding: 1.25rem 0.75rem;
-    background: var(--white);
+    background: var(--card-bg);
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     transition: var(--transition);
@@ -1221,7 +1309,7 @@ a:hover {
 .cv-type-label {
     font-weight: 700;
     font-size: 0.9rem;
-    color: var(--primary);
+    color: var(--heading);
     margin-bottom: 0.25rem;
 }
 
@@ -1233,7 +1321,7 @@ a:hover {
 /* Gemini Result Card */
 .gemini-result-card {
     border: 1px solid #c9b1ff;
-    background: var(--white);
+    background: var(--card-bg);
 }
 
 .gemini-badge {
@@ -1264,7 +1352,7 @@ a:hover {
 /* Rendered README / Gemini content */
 .gemini-content h1, .gemini-content h2, .gemini-content h3,
 .gemini-content h4, .gemini-content h5, .gemini-content h6 {
-    color: var(--primary);
+    color: var(--heading);
     margin-top: 1.5rem;
     margin-bottom: 0.75rem;
 }
@@ -1273,7 +1361,7 @@ a:hover {
 .gemini-content h2 { font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
 .gemini-content h3 { font-size: 1.1rem; }
 
-.gemini-content h1, .gemini-content h2, .gemini-content h3 { color: var(--primary); margin-top: 1.5rem; margin-bottom: 0.75rem; font-weight: 600; line-height: 1.2; }
+.gemini-content h1, .gemini-content h2, .gemini-content h3 { color: var(--heading); margin-top: 1.5rem; margin-bottom: 0.75rem; font-weight: 600; line-height: 1.2; }
 .gemini-content h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
 .gemini-content h2 { font-size: 1.25rem; }
 .gemini-content h3 { font-size: 1.1rem; }
@@ -1329,7 +1417,7 @@ a:hover {
     font-weight: 600;
 }
 
-.gemini-content strong { color: var(--primary); }
+.gemini-content strong { color: var(--heading); }
 
 @media (max-width: 768px) {
     .cv-type-selector {

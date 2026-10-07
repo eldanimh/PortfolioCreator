@@ -13,7 +13,7 @@
         <a href="{% url 'github_repos' %}" class="back-link">← Volver a repositorios</a>
     {% endif %}
     <h1 class="page-title">
-        {% if platform == "GitLab" %}<img src="{% static 'portfolioCV/img/gitlab.svg' %}" alt="GitLab" style="height: 1em; width: auto; vertical-align: -0.1em;">{% else %}<img src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;">{% endif %}
+        {% if platform == "GitLab" %}<img src="{% static 'portfolioCV/img/gitlab.svg' %}" alt="GitLab" style="height: 1em; width: auto; vertical-align: -0.1em;">{% else %}<img class="only-light" src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;"><img class="only-dark" src="{% static 'portfolioCV/img/github_dark.svg' %}" alt="GitHub" style="height: 1em; width: auto; vertical-align: -0.1em;">{% endif %}
         {{ repo.name|default:"Repositorio" }}
     </h1>
 </div>

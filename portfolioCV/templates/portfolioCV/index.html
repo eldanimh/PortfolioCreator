@@ -22,7 +22,7 @@
 
     <a href="{% url 'github_repos' %}" class="platform-card platform-github">
         <div class="platform-icon">
-            <img src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub">
+            <img class="only-light" src="{% static 'portfolioCV/img/github_light.svg' %}" alt="GitHub"><img class="only-dark" src="{% static 'portfolioCV/img/github_dark.svg' %}" alt="GitHub">
         </div>
         <h2 class="platform-name">GitHub</h2>
         <p class="platform-desc">Accede a tus repositorios en github.com</p>
@@ -31,7 +31,7 @@
 
     <a href="{% url 'openalex_repos' %}" class="platform-card platform-openalex" style="border-left-color: #f39c12;">
         <div class="platform-icon">
-            <img src="{% static 'portfolioCV/img/openalex-lockup.png' %}" alt="OpenAlex" class="platform-icon-wide">
+            <img src="{% static 'portfolioCV/img/openalex-lockup.svg' %}" alt="OpenAlex" class="platform-icon-wide only-light"><img src="{% static 'portfolioCV/img/openalex-lockup-white.svg' %}" alt="OpenAlex" class="platform-icon-wide only-dark">
         </div>
         <p class="platform-desc">Busca publicaciones e información científica de OpenAlex</p>
         <span class="platform-arrow">→</span>
