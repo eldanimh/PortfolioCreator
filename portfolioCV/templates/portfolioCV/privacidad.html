@@ -20,7 +20,7 @@
         <h2>2. Qué datos tratamos</h2>
         <ul>
             <li><strong>Cuenta:</strong> nombre de usuario, correo electrónico y contraseña (almacenada solo como hash). Si inicias sesión con GitHub o Google, recibimos de ese proveedor tu nombre de usuario y correo.</li>
-            <li><strong>Tokens y claves que tú introduces:</strong> tokens de GitHub, GitLab y OpenAlex, clave de API de NVIDIA, URL de GitLab y de LM Studio. Se guardan <strong>cifrados</strong> en la base de datos.</li>
+            <li><strong>Tokens y claves que tú introduces:</strong> tokens de GitHub, GitLab y OpenAlex, clave de API de IA, URL de GitLab, del proveedor de IA y de LM Studio. Se guardan <strong>cifrados</strong> en la base de datos.</li>
             <li><strong>Contenido de tu CV:</strong> los proyectos y resúmenes que añades y los datos personales que rellenas voluntariamente (nombre, foto, teléfono, correo, LinkedIn, sobre mí).</li>
             <li><strong>Datos técnicos:</strong> una cookie de sesión y una cookie CSRF, necesarias para el funcionamiento y la seguridad del sitio.</li>
         </ul>
@@ -35,7 +35,7 @@
         <h2>4. Servicios de terceros</h2>
         <ul>
             <li><strong>GitHub, GitLab y OpenAlex:</strong> se consultan con tus tokens para obtener tus proyectos y obras.</li>
-            <li><strong>NVIDIA (IA en la nube):</strong> si pides un resumen con IA, el contenido del repositorio (README, lenguajes, estructura) se envía a NVIDIA con tu propia clave de API. Consulta su política de privacidad.</li>
+            <li><strong>Proveedor de IA en la nube (NVIDIA por defecto, o el que configures):</strong> si pides un resumen con IA, el contenido del repositorio (README, lenguajes, estructura) se envía a ese proveedor con tu propia clave de API. Consulta su política de privacidad.</li>
             <li><strong>LM Studio (IA local):</strong> el texto se envía solo al servidor que tú indiques.</li>
             <li><strong>GitHub y Google (inicio de sesión):</strong> solo se usan para identificarte.</li>
         </ul>

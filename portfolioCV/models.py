@@ -30,8 +30,12 @@ class UserProfile(models.Model):
     gitlab_username = models.CharField(max_length=150, blank=True, default='')
     # API Key de OpenAlex (opcional, para evitar límites de peticiones)
     openalex_token = EncryptedCharField(blank=True, default='')
-    # API Key de NVIDIA para usar modelos de IA en la nube
+    # API Key del proveedor de IA en la nube (se llama nvidia_* por historia: NVIDIA es el
+    # proveedor por defecto, pero vale la de cualquier API compatible con OpenAI)
     nvidia_api_key = EncryptedCharField(blank=True, default='')
+    # URL base del proveedor de IA (vacío = NVIDIA) y modelo (vacío = settings.NVIDIA_MODEL)
+    ia_base_url = models.CharField(max_length=255, blank=True, default='')
+    ia_model = models.CharField(max_length=150, blank=True, default='')
     # URL del servidor LM Studio local (para IA en local, ej: http://127.0.0.1:1234)
     lm_studio_url = models.CharField(max_length=255, blank=True, default='')
 

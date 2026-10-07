@@ -100,7 +100,7 @@ Aplicación web orientada a extraer repositorios y documentos de plataformas ext
 
 ## 🚀 Parte avanzada
 
-- **Motor Generativo de IA (NVIDIA Gemma 2 / LM Studio):** IA en la nube y en local mediante el protocolo de `openai`. Lee el código fuente o los metadatos científicos para redactar resúmenes profesionales en Markdown.
+- **Motor Generativo de IA (NVIDIA Gemma 3 / LM Studio):** IA en la nube y en local mediante el protocolo de `openai`. Lee el código fuente o los metadatos científicos para redactar resúmenes profesionales en Markdown.
 - **Streaming de respuestas HTTP:** la redacción se transmite en vivo con generadores (`yield`) y `StreamingHttpResponse`, sin bloquear el servidor.
 - **Exportación multipropósito (PDF y HTML):** las plantillas de Django se convierten en PDF de alta fidelidad o en un HTML estático 100% responsive y autocontenido.
 - **Testing automatizado (mocks):** 17 pruebas unitarias (`tests.py`) sobre autenticación, formularios y modelos, con `unittest.mock.patch` para simular las APIs externas y la IA.

@@ -188,6 +188,11 @@ SOCIALACCOUNT_AUTO_SIGNUP = True    # Crea el usuario en nuestra BD automáticam
 ALLOW_LOCAL_LLM = os.environ.get("ALLOW_LOCAL_LLM", "False") == "True"
 # Botones de login con GitHub/Google (solo donde estén configuradas las apps OAuth).
 SOCIAL_LOGIN = os.environ.get("SOCIAL_LOGIN", "False") == "True"
+# Proveedor y modelo de IA por defecto, para los usuarios que no ponen los suyos en Tokens.
+# NVIDIA retira modelos (gemma-2-2b-it dejó de existir el 2026-07-27): si pasa de nuevo,
+# basta con cambiar NVIDIA_MODEL en el entorno.
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODEL = os.environ.get("NVIDIA_MODEL", "google/gemma-3-12b-it")
 
 # --- LOGGING ---
 # Con DEBUG=False Django no muestra los errores 500 en ningún sitio; así salen por consola (docker compose logs).

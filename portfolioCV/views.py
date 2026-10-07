@@ -1096,21 +1096,21 @@ def stream_resumen_gemini(request):
                 else:
                     yield f"\n\nError de LM Studio ({resp.status_code}): {resp.text}"
             else:
-                # --- OPCIÓN 2: LLM NUBE (NVIDIA GEMMA) ---
-                # Usamos la librería oficial de OpenAI (porque NVIDIA usa API compatible)
+                # --- OPCIÓN 2: LLM NUBE (proveedor del usuario; NVIDIA por defecto) ---
+                # Usamos la librería oficial de OpenAI: vale para cualquier API compatible
                 from openai import OpenAI
                 if not profile.nvidia_api_key:
-                    yield "Error: Configura tu API Key de NVIDIA en los tokens."
+                    yield "Error: Configura tu API Key de IA en los tokens."
                     return
                 
                 client = OpenAI(
-                  base_url="https://integrate.api.nvidia.com/v1",
+                  base_url=profile.ia_base_url or settings.NVIDIA_BASE_URL,
                   api_key=profile.nvidia_api_key,
                 )
                 
-                # Petición a NVIDIA
+                # Petición al proveedor de IA
                 response = client.chat.completions.create(
-                  model="google/gemma-2-2b-it",
+                  model=profile.ia_model or settings.NVIDIA_MODEL,
                   messages=[{"role":"user", "content": prompt}],
                   temperature=0.2,
                   top_p=0.7,
@@ -1118,7 +1118,7 @@ def stream_resumen_gemini(request):
                   stream=True  # IMPORTANTE: activa el streaming
                 )
                 
-                # Bucle: a medida que NVIDIA envía fragmentos (chunks), hacemos yield al navegador
+                # Bucle: a medida que el proveedor envía fragmentos (chunks), hacemos yield al navegador
                 for chunk in response:
                     if chunk.choices and chunk.choices[0].delta.content is not None:
                         yield chunk.choices[0].delta.content

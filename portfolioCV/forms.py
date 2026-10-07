@@ -29,7 +29,7 @@ class TokensForm(forms.ModelForm):
     class Meta:
         model = UserProfile  # Este formulario edita objetos de tipo UserProfile
         # Campos que se muestran en el formulario (orden en que aparecen)
-        fields = ['github_token', 'gitlab_url', 'gitlab_token', 'openalex_token', 'nvidia_api_key', 'github_username', 'gitlab_username', 'lm_studio_url']
+        fields = ['github_token', 'gitlab_url', 'gitlab_token', 'openalex_token', 'ia_base_url', 'nvidia_api_key', 'ia_model', 'github_username', 'gitlab_username', 'lm_studio_url']
         # Widgets: controlan CÓMO se renderiza cada campo en el HTML
         widgets = {
             # PasswordInput: muestra el campo como tipo password (****) para ocultar el token
@@ -37,7 +37,9 @@ class TokensForm(forms.ModelForm):
             'gitlab_url': forms.URLInput(attrs={'placeholder': 'https://gitlab.com'}),
             'gitlab_token': forms.PasswordInput(attrs={'placeholder': 'Token de GitLab'}),
             'openalex_token': forms.PasswordInput(attrs={'placeholder': 'API Key de OpenAlex (Opcional)'}),
-            'nvidia_api_key': forms.PasswordInput(attrs={'placeholder': 'API Key de NVIDIA'}),
+            'ia_base_url': forms.URLInput(attrs={'placeholder': 'https://integrate.api.nvidia.com/v1'}),
+            'nvidia_api_key': forms.PasswordInput(attrs={'placeholder': 'API Key de tu proveedor de IA'}),
+            'ia_model': forms.TextInput(attrs={'placeholder': settings.NVIDIA_MODEL}),
             # TextInput: campo de texto normal (el username no es secreto)
             'github_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitHub'}),
             'gitlab_username': forms.TextInput(attrs={'placeholder': 'Usuario de GitLab'}),
@@ -50,7 +52,9 @@ class TokensForm(forms.ModelForm):
             'gitlab_url': 'URL de tu GitLab (vacío = gitlab.com)',
             'gitlab_token': 'GitLab Personal Access Token',
             'openalex_token': 'OpenAlex API Key',
-            'nvidia_api_key': 'NVIDIA API Key',
+            'ia_base_url': 'URL del proveedor de IA (vacío = NVIDIA)',
+            'nvidia_api_key': 'API Key de IA',
+            'ia_model': 'Modelo de IA (vacío = el predeterminado)',
             'github_username': 'Nombre de usuario en GitHub',
             'gitlab_username': 'Nombre de usuario en GitLab',
             'lm_studio_url': 'URL de servidor LM Studio Local',
@@ -95,6 +99,15 @@ class TokensForm(forms.ModelForm):
         for name in self.SECRET_FIELDS:
             if name in self.cleaned_data:
                 setattr(self.instance, name, self.cleaned_data[name])
+
+    def clean_ia_base_url(self):
+        """Solo URLs https públicas para el proveedor de IA (anti-SSRF)"""
+        url = (self.cleaned_data.get('ia_base_url') or '').strip().rstrip('/')
+        if url and not url_externa_segura(url):
+            raise forms.ValidationError(
+                "Usa la URL https pública de una API compatible con OpenAI (sin puerto ni parámetros)."
+            )
+        return url
 
     def clean_gitlab_url(self):
         """Rechaza URLs de GitLab que no sean https públicas (anti-SSRF)"""

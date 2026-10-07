@@ -269,3 +269,20 @@ class TestCVBuilder(TestCase):
         content = b''.join(response.streaming_content).decode('utf-8')
         self.assertIn('Hello from AI', content)
 
+    @patch('openai.OpenAI')
+    def test_stream_resumen_usa_proveedor_del_usuario(self, mock_openai):
+        """Si el usuario configura URL y modelo propios, se usan en lugar de los de NVIDIA"""
+        self.profile.ia_base_url = 'https://api.openai.com/v1'
+        self.profile.ia_model = 'gpt-test'
+        self.profile.save()
+        mock_openai.return_value.chat.completions.create.return_value = []
+
+        response = self.client.post(reverse('stream_resumen_gemini'), {
+            'id': '123', 'cv_type': 'extenso', 'name': 'Project', 'llm_model': 'nvidia-gemma',
+        })
+        b''.join(response.streaming_content)
+
+        self.assertEqual(mock_openai.call_args.kwargs['base_url'], 'https://api.openai.com/v1')
+        create_kwargs = mock_openai.return_value.chat.completions.create.call_args.kwargs
+        self.assertEqual(create_kwargs['model'], 'gpt-test')
+
