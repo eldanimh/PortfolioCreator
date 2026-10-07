@@ -46,6 +46,35 @@ class FormTests(TestCase):
         # All fields are blank=True, so it should be valid even if empty or partial
         self.assertTrue(form.is_valid())
 
+    def test_tokens_form_conserva_tokens_vacios(self):
+        """Guardar solo un token no debe borrar los que ya estaban guardados"""
+        user = User.objects.create_user(username='tokenuser', password='testpassword123')
+        profile = user.profile
+        profile.github_token = 'ghp_guardado'
+        profile.save()
+
+        form = TokensForm(data={'gitlab_token': 'glpat_nuevo'}, instance=profile)
+        self.assertTrue(form.is_valid())
+        form.save()
+
+        profile.refresh_from_db()
+        self.assertEqual(profile.github_token, 'ghp_guardado')
+        self.assertEqual(profile.gitlab_token, 'glpat_nuevo')
+
+    def test_tokens_form_eliminar_token(self):
+        """La casilla "Eliminar" borra el token guardado"""
+        user = User.objects.create_user(username='tokenuser2', password='testpassword123')
+        profile = user.profile
+        profile.github_token = 'ghp_guardado'
+        profile.save()
+
+        form = TokensForm(data={'borrar_github_token': 'on'}, instance=profile)
+        self.assertTrue(form.is_valid())
+        form.save()
+
+        profile.refresh_from_db()
+        self.assertEqual(profile.github_token, '')
+
     def test_contenido_form_valid(self):
         data = {
             'recurso': 'Mi Recurso Único',

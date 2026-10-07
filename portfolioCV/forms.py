@@ -56,11 +56,45 @@ class TokensForm(forms.ModelForm):
             'lm_studio_url': 'URL de servidor LM Studio Local',
         }
 
+    # Campos secretos: PasswordInput no reenvía su valor al navegador, así que
+    # si llegan vacíos se conserva lo guardado (salvo que se marque "Eliminar")
+    SECRET_FIELDS = ['github_token', 'gitlab_token', 'openalex_token', 'nvidia_api_key']
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # LM Studio solo funciona en local: fuera de ahí ni se muestra el campo
         if not settings.ALLOW_LOCAL_LLM:
             self.fields.pop('lm_studio_url', None)
+
+        orden = []
+        for name in list(self.fields):
+            orden.append(name)
+            if name in self.SECRET_FIELDS and getattr(self.instance, name, ''):
+                self.fields[name].widget.attrs['placeholder'] = 'Guardado ••••••  (déjalo vacío para mantenerlo)'
+                self.fields['borrar_' + name] = forms.BooleanField(
+                    required=False, label='Eliminar el valor guardado'
+                )
+                orden.append('borrar_' + name)
+        self.order_fields(orden)
+
+    def clean(self):
+        cleaned = super().clean()
+        for name in self.SECRET_FIELDS:
+            if name not in self.fields:
+                continue
+            if cleaned.get('borrar_' + name):
+                cleaned[name] = ''
+            elif not cleaned.get(name):
+                cleaned[name] = getattr(self.instance, name, '')
+        return cleaned
+
+    def _post_clean(self):
+        super()._post_clean()
+        # construct_instance ignora los campos que no vienen en el POST;
+        # se asignan a mano para que "Eliminar" funcione siempre
+        for name in self.SECRET_FIELDS:
+            if name in self.cleaned_data:
+                setattr(self.instance, name, self.cleaned_data[name])
 
     def clean_gitlab_url(self):
         """Rechaza URLs de GitLab que no sean https públicas (anti-SSRF)"""

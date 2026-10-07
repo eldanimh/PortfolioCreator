@@ -235,6 +235,27 @@ a:hover {
 :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
+/* Casilla "Eliminar el valor guardado" bajo cada token */
+.form-check-group {
+    margin-top: -0.6rem;
+}
+
+.form-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+.form-check input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--highlight);
+}
+
 /* ─── Messages ──────────────────────────────────────────── */
 .messages-container {
     max-width: 900px;
