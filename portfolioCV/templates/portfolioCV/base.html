@@ -9,7 +9,7 @@
     <link rel="shortcut icon" type="image/svg+xml" href="{% static 'portfolioCV/img/SOLO-LOGO.svg' %}?v=6">
     <link rel="icon" type="image/svg+xml" href="{% static 'portfolioCV/img/SOLO-LOGO.svg' %}?v=6">
     <link rel="apple-touch-icon" href="{% static 'portfolioCV/img/SOLO-LOGO.svg' %}?v=6">
-    <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}?v=8">
+    <link rel="stylesheet" href="{% static 'portfolioCV/css/style.css' %}?v=9">
     <script>
         (function () {
             var t = null;
@@ -26,7 +26,7 @@
     <nav class="navbar">
         <div class="nav-container">
             <a href="{% url 'index' %}" class="nav-brand">
-                <span class="brand-icon">◆</span> Portfolio Creator
+                <img src="{% static 'portfolioCV/img/SOLO-LOGO.svg' %}" alt="" class="brand-icon"> Portfolio Creator
             </a>
             {% if user.is_authenticated %}
             <span class="nav-user-badge">¡Hola, {{ user.username }}!</span>
