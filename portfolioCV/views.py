@@ -103,7 +103,52 @@ def detalle_recurso(request, recurso):
 
     return render(request, 'portfolioCV/detalle.html', {
         'contenido': contenido,
+        **_presentar_contenido(contenido.contenido),
     })
+
+
+def _presentar_contenido(texto):
+    """
+    Decide cómo mostrar un recurso: el CV profesional (JSON con personal_info) como
+    ficha, cualquier otro JSON formateado y el resto como texto con sus saltos de línea.
+    """
+    try:
+        data = json.loads(texto)
+    except (json.JSONDecodeError, TypeError):
+        return {'modo': 'texto'}
+
+    if isinstance(data, dict) and isinstance(data.get('personal_info'), dict):
+        info = data['personal_info']
+        foto = info.get('photo') or ''
+        linkedin = (info.get('linkedin') or '').strip()
+        if linkedin and not linkedin.startswith(('http://', 'https://')):
+            linkedin = 'https://' + linkedin
+        items = [i for i in data.get('items', []) if isinstance(i, dict)]
+        return {
+            'modo': 'cv',
+            'cv': {
+                'nombre': info.get('name', ''),
+                'email': info.get('email', ''),
+                'telefono': info.get('phone', ''),
+                'linkedin': linkedin,
+                'sobre_mi': (info.get('about') or '').replace('\r\n', '\n'),
+                # Solo imágenes incrustadas: nada de URLs externas en un <img>
+                'foto': foto if foto.startswith('data:image/') else '',
+                'proyectos': [i for i in items if i.get('platform') != 'IA Summary'],
+                'resumenes': [i for i in items if i.get('platform') == 'IA Summary'],
+            },
+        }
+
+    # JSON genérico: formateado, sin volcar imágenes en base64 enteras
+    def acortar(valor):
+        if isinstance(valor, str) and valor.startswith('data:') and len(valor) > 80:
+            return valor[:40] + '… [imagen]'
+        if isinstance(valor, dict):
+            return {k: acortar(v) for k, v in valor.items()}
+        if isinstance(valor, list):
+            return [acortar(v) for v in valor]
+        return valor
+    return {'modo': 'json', 'json_bonito': json.dumps(acortar(data), indent=2, ensure_ascii=False)}
 
 
 # ─── Eliminar recurso ──────────────────────────────────────

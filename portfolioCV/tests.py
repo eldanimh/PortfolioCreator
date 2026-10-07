@@ -1,3 +1,4 @@
+import json
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -353,3 +354,31 @@ class ProveedorIATests(TestCase):
 
         mock_get.return_value.json.return_value = {'data': [{'id': 'openai/gpt-oss-20b'}]}
         self.assertIsNone(comprobar_configuracion(self.profile))
+
+
+class DetalleRecursoTests(TestCase):
+    """La página de un recurso se adapta a su contenido"""
+
+    def test_cv_profesional_se_muestra_como_ficha(self):
+        data = {'personal_info': {'name': 'Ana Pérez', 'email': 'ana@example.com', 'linkedin': 'linkedin.com/in/ana',
+                                  'photo': 'data:image/png;base64,AAAA', 'about': 'Hola\r\nAdiós'},
+                'items': [{'platform': 'GitHub', 'id': '1', 'name': 'MiRepo'}]}
+        ContenidoData.objects.create(recurso='cv_profesional_ana', contenido=json.dumps(data))
+        response = self.client.get(reverse('detalle_recurso', args=['cv_profesional_ana']))
+        self.assertContains(response, 'class="cv-ficha"')
+        self.assertContains(response, 'Ana Pérez')
+        self.assertContains(response, 'href="https://linkedin.com/in/ana"')
+        self.assertContains(response, 'MiRepo')
+        self.assertNotContains(response, '"personal_info"')  # no se vuelca el JSON crudo
+
+    def test_json_generico_formateado_y_sin_base64(self):
+        ContenidoData.objects.create(recurso='datos', contenido=json.dumps({'img': 'data:image/png;base64,' + 'A' * 500}))
+        response = self.client.get(reverse('detalle_recurso', args=['datos']))
+        self.assertContains(response, 'class="contenido-json"')
+        self.assertContains(response, '[imagen]')
+        self.assertNotContains(response, 'A' * 500)
+
+    def test_texto_respeta_saltos_de_linea(self):
+        ContenidoData.objects.create(recurso='nota', contenido='uno\ndos')
+        response = self.client.get(reverse('detalle_recurso', args=['nota']))
+        self.assertContains(response, 'uno<br>dos')

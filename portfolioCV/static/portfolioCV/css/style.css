@@ -975,6 +975,147 @@ a:hover {
     margin-bottom: 1.5rem;
 }
 
+/* Textos largos (enlaces, base64...) no deben salirse de la tarjeta */
+.contenido-text,
+.cv-ficha-texto {
+    overflow-wrap: anywhere;
+}
+
+.contenido-json {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin-bottom: 1.5rem;
+}
+
+/* ─── Ficha del CV profesional (detalle de recurso) ────── */
+.cv-ficha-header {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.cv-ficha-foto {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 3px solid var(--border);
+}
+
+.cv-ficha-foto-vacia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--white);
+    background: linear-gradient(135deg, #bd4df9, #ff5004);
+    border: none;
+}
+
+.cv-ficha-nombre {
+    font-size: 1.5rem;
+    color: var(--heading);
+    margin-bottom: 0.5rem;
+}
+
+.cv-ficha-contacto {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.cv-chip {
+    font-size: 0.82rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+a.cv-chip:hover {
+    border-color: var(--highlight);
+    color: var(--highlight);
+}
+
+.cv-ficha-titulo {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-light);
+    margin: 1.5rem 0 0.6rem;
+}
+
+.cv-ficha-texto {
+    color: var(--text);
+    line-height: 1.75;
+}
+
+.cv-ficha-texto p + p {
+    margin-top: 0.75rem;
+}
+
+.cv-ficha-lista {
+    list-style: none;
+}
+
+.cv-ficha-lista li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.cv-ficha-lista li:last-child {
+    border-bottom: none;
+}
+
+.cv-ficha-resumen {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.cv-ficha-resumen summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--heading);
+}
+
+.cv-ficha-resumen[open] summary {
+    margin-bottom: 0.75rem;
+}
+
+.cv-ficha-editar {
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .cv-ficha-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .cv-ficha-contacto {
+        justify-content: center;
+    }
+}
+
 .contenido-meta {
     font-size: 0.85rem;
     color: var(--text-light);

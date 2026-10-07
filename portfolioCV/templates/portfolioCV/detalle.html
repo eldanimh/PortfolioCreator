@@ -10,7 +10,62 @@
 
 <div class="detail-container">
     <div class="detail-card">
-        <p class="contenido-text">{{ contenido.contenido }}</p>
+        {% if modo == 'cv' %}
+        <!-- CV profesional: ficha con los datos personales y lo añadido al CV -->
+        <div class="cv-ficha">
+            <div class="cv-ficha-header">
+                {% if cv.foto %}
+                <img src="{{ cv.foto }}" alt="Foto de {{ cv.nombre }}" class="cv-ficha-foto">
+                {% else %}
+                <div class="cv-ficha-foto cv-ficha-foto-vacia">{{ cv.nombre|default:"?"|slice:":1" }}</div>
+                {% endif %}
+                <div>
+                    <h2 class="cv-ficha-nombre">{{ cv.nombre|default:"Sin nombre" }}</h2>
+                    <div class="cv-ficha-contacto">
+                        {% if cv.email %}<a href="mailto:{{ cv.email }}" class="cv-chip">✉ {{ cv.email }}</a>{% endif %}
+                        {% if cv.telefono %}<span class="cv-chip">☎ {{ cv.telefono }}</span>{% endif %}
+                        {% if cv.linkedin %}<a href="{{ cv.linkedin }}" class="cv-chip" target="_blank" rel="noopener">in LinkedIn</a>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if cv.sobre_mi %}
+            <h3 class="cv-ficha-titulo">Sobre mí</h3>
+            <div class="cv-ficha-texto">{{ cv.sobre_mi|linebreaks }}</div>
+            {% endif %}
+
+            <h3 class="cv-ficha-titulo">Proyectos y publicaciones</h3>
+            {% if cv.proyectos %}
+            <ul class="cv-ficha-lista">
+                {% for item in cv.proyectos %}
+                <li><span class="cv-item-badge">{{ item.platform }}</span> {{ item.name }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty-state">Todavía no has añadido proyectos a tu CV.</p>
+            {% endif %}
+
+            {% if cv.resumenes %}
+            <h3 class="cv-ficha-titulo">Resúmenes con IA</h3>
+            {% for item in cv.resumenes %}
+            <details class="cv-ficha-resumen">
+                <summary>{{ item.name }}</summary>
+                <div class="cv-ficha-texto">{{ item.content|linebreaks }}</div>
+            </details>
+            {% endfor %}
+            {% endif %}
+
+            {% if user.is_authenticated and contenido.usuario == user.username %}
+            <a href="{% url 'cv_builder' %}" class="btn btn-secondary cv-ficha-editar">✎ Editar en Mi CV</a>
+            {% endif %}
+        </div>
+
+        {% elif modo == 'json' %}
+        <pre class="contenido-json">{{ json_bonito }}</pre>
+
+        {% else %}
+        <p class="contenido-text">{{ contenido.contenido|linebreaksbr }}</p>
+        {% endif %}
 
         {% if contenido.fecha_creacion %}
         <p class="contenido-meta">Creado: {{ contenido.fecha_creacion|date:"d/m/Y H:i" }}</p>
