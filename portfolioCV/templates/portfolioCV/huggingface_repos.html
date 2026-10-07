@@ -12,6 +12,25 @@
     </h1>
 </div>
 
+<form method="get" action="{% url 'huggingface_repos' %}" class="hf-buscador">
+    <div class="hf-buscador-fila">
+        <input type="text" name="q" value="{{ query }}" class="hf-buscador-input"
+               placeholder="{% if modo == 'nombre' %}Nombre de un modelo, dataset o Space…{% else %}Usuario u organización (p. ej. openai)…{% endif %}">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </div>
+    <div class="hf-buscador-modos">
+        <label><input type="radio" name="modo" value="autor" {% if modo != 'nombre' %}checked{% endif %}> Por usuario</label>
+        <label><input type="radio" name="modo" value="nombre" {% if modo == 'nombre' %}checked{% endif %}> Por nombre</label>
+        {% if query and tiene_usuario %}<a href="{% url 'huggingface_repos' %}" class="hf-buscador-mios">← Ver mis repositorios</a>{% endif %}
+    </div>
+</form>
+
+{% if query %}
+<p class="hf-buscador-titulo">
+    {% if modo == 'nombre' %}Resultados para «{{ query }}»{% else %}Repositorios de <strong>{{ query }}</strong>{% endif %}
+</p>
+{% endif %}
+
 {% if error_msg %}
 <div class="alert alert-error">
     {{ error_msg }}
@@ -23,7 +42,7 @@
     {% for repo in repos %}
     <div class="repo-card">
         <div class="repo-header">
-            <h3 class="repo-name">{{ repo.name }}</h3>
+            <h3 class="repo-name">{% if query %}<span class="hf-autor">{{ repo.owner }}/</span>{% endif %}{{ repo.name }}</h3>
             <span class="repo-badge {% if repo.private %}badge-private{% else %}badge-public{% endif %}">
                 {% if repo.private %}private{% else %}public{% endif %}
             </span>
@@ -54,7 +73,11 @@
 </div>
 {% elif not error_msg %}
 <div class="empty-state-container">
+    {% if query or tiene_usuario %}
     <p class="empty-state">No se encontraron modelos, datasets ni Spaces.</p>
+    {% else %}
+    <p class="empty-state">Busca arriba los repos de cualquier usuario, o pon tu usuario de Hugging Face en <a href="{% url 'configurar_tokens' %}">Tokens</a> para ver los tuyos aquí.</p>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

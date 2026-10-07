@@ -389,6 +389,76 @@ a:hover {
 :root[data-theme="dark"] .hf-tipo-dataset { background: #14233f; color: #93c5fd; }
 :root[data-theme="dark"] .hf-tipo-space { background: #2a1a40; color: #d8b4fe; }
 
+/* Buscador de Hugging Face */
+.hf-buscador {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.hf-buscador-fila {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.hf-buscador-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.65rem 0.9rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.hf-buscador-input:focus {
+    outline: none;
+    border-color: #ffac03;
+}
+
+.hf-buscador-modos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--text-light);
+}
+
+.hf-buscador-modos label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+}
+
+.hf-buscador-modos input {
+    accent-color: #ffac03;
+}
+
+.hf-buscador-mios {
+    margin-left: auto;
+}
+
+.hf-autor {
+    font-weight: 400;
+    color: var(--text-light);
+}
+
+.repo-name {
+    overflow-wrap: anywhere;
+}
+
+.hf-buscador-titulo {
+    color: var(--text-light);
+    margin-bottom: 1rem;
+}
+
 .hf-tags {
     display: flex;
     flex-wrap: wrap;

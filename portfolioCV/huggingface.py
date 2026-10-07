@@ -41,17 +41,26 @@ def url_web(tipo, repo_id):
     return f"{HF_URL}/{TIPOS[tipo][1]}{repo_id}"
 
 
-def listar_repos(profile):
-    """Modelos, datasets y Spaces del usuario, del más reciente al más antiguo"""
-    autor = usuario_hf(profile)
-    if not autor:
-        return []
+def listar_repos(profile, autor=None, busqueda=None):
+    """
+    Modelos, datasets y Spaces, del más reciente al más antiguo:
+    - busqueda: los que contienen ese texto en su nombre (de cualquier autor)
+    - autor: los de ese usuario
+    - sin nada: los del propio usuario (el de Tokens o el dueño del token)
+    """
+    if busqueda:
+        filtro = {"search": busqueda, "limit": 20}
+    else:
+        autor = autor or usuario_hf(profile)
+        if not autor:
+            return []
+        filtro = {"author": autor, "limit": 50}
     repos = []
     for tipo, (endpoint, _, etiqueta) in TIPOS.items():
         resp = requests.get(
             f"{HF_URL}/api/{endpoint}",
             headers=_headers(profile),
-            params={"author": autor, "limit": 50, "sort": "lastModified", "direction": -1, "full": "true"},
+            params={**filtro, "sort": "lastModified", "direction": -1, "full": "true"},
             timeout=10,
         )
         resp.raise_for_status()

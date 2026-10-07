@@ -29,13 +29,13 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 - 🦊 **Cualquier GitLab:** conecta `gitlab.com` o la instancia de tu universidad o empresa indicando su URL.
 - 🐙 **GitHub y GitLab:** lista tus repositorios, consulta su detalle (lenguajes, README) y añádelos a tu CV.
 - 📚 **OpenAlex:** busca publicaciones científicas y súmalas a tu portfolio.
-- 🤗 **Hugging Face:** lista tus modelos, datasets y Spaces (también los privados, con token), consulta su model card y añádelos a tu CV.
+- 🤗 **Hugging Face:** lista tus modelos, datasets y Spaces (también los privados, con token) o busca los de cualquier usuario o por nombre, consulta su model card y añádelos a tu CV.
 - 🤖 **Resúmenes con IA, con tu propia API Key:** pega la clave de NVIDIA, OpenAI, Anthropic, Google Gemini, Groq, OpenRouter o xAI y el proveedor se detecta solo, con un modelo rápido por defecto. También funciona en local con LM Studio.
 - ⚡ **Streaming en vivo:** el texto de la IA aparece al instante, con efecto "máquina de escribir".
 - 🌗 **Modo claro y oscuro:** sigue el tema del dispositivo y se puede cambiar desde la barra superior.
 - 📄 **Exportación:** descarga tu CV en PDF o como HTML autocontenido y responsive, ideal para GitHub Pages.
 - 🔐 **Cuentas y login social:** registro/login clásico y OAuth con **GitHub** y **Google** (django-allauth).
-- 🧪 **Tests con mocks:** 45 pruebas que se ejecutan en segundos sin depender de internet.
+- 🧪 **Tests con mocks:** 47 pruebas que se ejecutan en segundos sin depender de internet.
 
 ## 👤 Datos
 
@@ -108,7 +108,7 @@ Aplicación web orientada a extraer repositorios y documentos de plataformas ext
 - **Motor Generativo de IA (multiproveedor / LM Studio):** IA en la nube con la API Key de cada usuario, mediante el protocolo de `openai`. El proveedor se deduce del prefijo de la clave (`portfolioCV/ia.py`) y, al guardarla, se comprueba que el modelo existe. En NVIDIA se desactiva el razonamiento de los modelos que "piensan" para que el texto empiece a salir al momento. También funciona en local con LM Studio. Lee el código fuente o los metadatos científicos para redactar resúmenes profesionales en Markdown.
 - **Streaming de respuestas HTTP:** la redacción se transmite en vivo con generadores (`yield`) y `StreamingHttpResponse`, sin bloquear el servidor.
 - **Exportación multipropósito (PDF y HTML):** las plantillas de Django se convierten en PDF de alta fidelidad o en un HTML estático 100% responsive y autocontenido.
-- **Testing automatizado (mocks):** 45 pruebas unitarias (`tests.py`) sobre autenticación, formularios, modelos, Hugging Face, detección del proveedor de IA, páginas y permisos de recursos y seguridad del PDF, con `unittest.mock.patch` para simular las APIs externas y la IA.
+- **Testing automatizado (mocks):** 47 pruebas unitarias (`tests.py`) sobre autenticación, formularios, modelos, Hugging Face, detección del proveedor de IA, páginas y permisos de recursos y seguridad del PDF, con `unittest.mock.patch` para simular las APIs externas y la IA.
 - **Modo oscuro:** variables CSS por tema, preferencia del sistema (`prefers-color-scheme`) y elección guardada en `localStorage`, aplicada antes de pintar para evitar parpadeos.
 - **PDF a prueba de SSRF:** el README de cualquier repo se renderiza en un Chromium sin JavaScript y con todas las peticiones (y redirecciones) filtradas para que solo salgan a hosts públicos.
 - **Login social (OAuth 2.0):** inicio de sesión con un clic con **GitHub** y **Google**, con creación automática del perfil mediante signals.

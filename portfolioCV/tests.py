@@ -531,10 +531,30 @@ class HuggingFaceTests(TestCase):
         self.assertContains(response, 'text-generation')
         self.assertContains(response, reverse('huggingface_repo_detalle', args=['space', 'ana', 'demo']))
 
-    def test_sin_usuario_ni_token_manda_a_tokens(self):
+    def test_sin_usuario_muestra_el_buscador(self):
         self.profile.huggingface_username = ''
         self.profile.save()
-        self.assertRedirects(self.client.get(reverse('huggingface_repos')), reverse('configurar_tokens'))
+        response = self.client.get(reverse('huggingface_repos'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="q"')
+        self.assertContains(response, reverse('configurar_tokens'))
+
+    @patch('portfolioCV.huggingface.requests.get')
+    def test_buscar_repos_de_otro_usuario(self, mock_get):
+        mock_get.return_value = self._respuesta([])
+        self.client.get(reverse('huggingface_repos'), {'q': 'openai', 'modo': 'autor'})
+        params = [c.kwargs['params'] for c in mock_get.call_args_list]
+        self.assertEqual(len(params), 3)  # modelos, datasets y Spaces
+        self.assertTrue(all(p['author'] == 'openai' and 'search' not in p for p in params))
+
+    @patch('portfolioCV.huggingface.requests.get')
+    def test_buscar_por_nombre(self, mock_get):
+        mock_get.return_value = self._respuesta([{'id': 'otra/gpt-mini', 'lastModified': '2026-01-01'}])
+        response = self.client.get(reverse('huggingface_repos'), {'q': 'gpt', 'modo': 'nombre'})
+        params = [c.kwargs['params'] for c in mock_get.call_args_list]
+        self.assertTrue(all(p['search'] == 'gpt' and 'author' not in p for p in params))
+        self.assertContains(response, 'gpt-mini')
+        self.assertContains(response, 'Ver mis repositorios')
 
     def test_tipo_desconocido_da_404(self):
         response = self.client.get(reverse('huggingface_repo_detalle', args=['otro', 'ana', 'x']))

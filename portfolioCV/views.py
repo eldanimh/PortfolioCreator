@@ -351,19 +351,24 @@ def _tipo_hf_valido(tipo):
 
 @login_required
 def huggingface_repos(request):
-    """Lista los modelos, datasets y Spaces del usuario en Hugging Face"""
+    """
+    Modelos, datasets y Spaces de Hugging Face. Con ?q=... busca los de otro usuario
+    (modo=autor) o por nombre (modo=nombre); sin búsqueda, muestra los del usuario.
+    """
     profile = get_object_or_404(UserProfile, user=request.user)
-
-    if not profile.huggingface_token and not profile.huggingface_username:
-        messages.warning(request, 'Configura tu usuario (o tu token) de Hugging Face primero.')
-        return redirect('configurar_tokens')
+    query = request.GET.get('q', '').strip()
+    modo = 'nombre' if request.GET.get('modo') == 'nombre' else 'autor'
+    tiene_usuario = bool(profile.huggingface_token or profile.huggingface_username)
 
     repos = []
     error_msg = None
     try:
-        repos = hf.listar_repos(profile)
-        if not repos and not hf.usuario_hf(profile):
-            error_msg = "No se pudo identificar tu usuario de Hugging Face. Revisa el token o escribe tu usuario."
+        if query:
+            repos = hf.listar_repos(profile, **({'busqueda': query} if modo == 'nombre' else {'autor': query}))
+        elif tiene_usuario:
+            repos = hf.listar_repos(profile)
+            if not repos and not hf.usuario_hf(profile):
+                error_msg = "No se pudo identificar tu usuario de Hugging Face. Revisa el token o escribe tu usuario."
     except requests.exceptions.HTTPError as e:
         error_msg = f"Error al conectar con Hugging Face (código {e.response.status_code}). Verifica tu token."
     except requests.exceptions.RequestException as e:
@@ -373,6 +378,9 @@ def huggingface_repos(request):
         'repos': repos,
         'error_msg': error_msg,
         'platform': 'Hugging Face',
+        'query': query,
+        'modo': modo,
+        'tiene_usuario': tiene_usuario,
     })
 
 
