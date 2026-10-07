@@ -12,12 +12,13 @@ from django.contrib.auth import login, logout, authenticate  # Funciones de aute
 # logout: destruye la sesión (borra de django_session y elimina la cookie)
 # authenticate: verifica usuario+contraseña contra la BD (devuelve User o None)
 from django.contrib.auth.decorators import login_required  # Decorador que protege vistas
+from django.views.decorators.http import require_POST  # Decorador que solo admite peticiones POST
 # @login_required: si no hay cookie sessionid válida → redirige a /login/
 from django.contrib.auth.forms import AuthenticationForm  # Formulario de login de Django
 from django.contrib import messages  # Sistema de mensajes flash (se muestran una vez al usuario)
 from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
-from .seguridad import url_externa_segura  # Valida URLs que introduce el usuario (anti-SSRF)
+from .seguridad import url_externa_segura, pagina_pdf_segura  # Anti-SSRF en URLs del usuario y en el PDF
 from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
 from django.conf import settings
 
@@ -89,12 +90,14 @@ def condiciones(request):
 
 
 # ─── Detalle de recurso ────────────────────────────────────
+@login_required  # Los recursos tienen datos personales (el CV guarda email, teléfono y foto)
 def detalle_recurso(request, recurso):
     """Muestra el contenido de un recurso específico"""
     # 'recurso' viene de la URL: /<str:recurso>/ (capturado por el conversor de Django)
     try:
-        # Busca en la BD un ContenidoData con ese nombre de recurso
-        contenido = ContenidoData.objects.get(recurso=recurso)
+        # Busca en la BD un ContenidoData con ese nombre de recurso... y que sea del usuario.
+        # Los ajenos dan el mismo 404 que los inexistentes, para no revelar que existen
+        contenido = ContenidoData.objects.get(recurso=recurso, usuario=request.user.username)
     except ContenidoData.DoesNotExist:
         # Si no existe → devuelve página 404 con código de estado HTTP 404
         return render(request, 'portfolioCV/404.html', {
@@ -153,10 +156,11 @@ def _presentar_contenido(texto):
 
 # ─── Eliminar recurso ──────────────────────────────────────
 @login_required  # Solo usuarios autenticados pueden borrar (si no → redirige a /login/)
+@require_POST    # Borrar con un GET permitiría hacerlo desde un simple enlace en otra web (CSRF)
 def eliminar_recurso(request, recurso):
     """Elimina un recurso de la base de datos"""
-    # get_object_or_404: busca el recurso, si no existe devuelve HTTP 404 automáticamente
-    contenido = get_object_or_404(ContenidoData, recurso=recurso)
+    # get_object_or_404: busca el recurso del usuario; si no existe (o es de otro) → HTTP 404
+    contenido = get_object_or_404(ContenidoData, recurso=recurso, usuario=request.user.username)
     contenido.delete()  # DELETE FROM contenidodata WHERE recurso='...'
     messages.success(request, f'Recurso "{recurso}" eliminado correctamente.')
     return redirect('index')  # Vuelve a la página principal
@@ -796,7 +800,7 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     # Abre un navegador oculto, carga el HTML y le pide imprimir a PDF
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        page = pagina_pdf_segura(browser)  # Sin JavaScript ni peticiones a la red interna
         page.set_content(html_string, wait_until='networkidle')  # Espera a que carguen imágenes/CSS
         
         # Header/Footer content para Playwright (debe ser HTML inyectado en el PDF)
@@ -1056,7 +1060,6 @@ def generar_resumen_gemini(request):
         'cv_type': cv_type,
         'cv_type_label': cv_type_labels.get(cv_type, cv_type),
         'llm_model': llm_model,
-        'used_model': llm_model,
     })
 
 
@@ -1302,7 +1305,7 @@ def _generar_pdf_completo(user, cv_data):
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            page = pagina_pdf_segura(browser)  # Sin JavaScript ni peticiones a la red interna
             page.set_content(html_string, wait_until='networkidle')
             
             header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'

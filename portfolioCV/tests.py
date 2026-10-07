@@ -357,13 +357,18 @@ class ProveedorIATests(TestCase):
 
 
 class DetalleRecursoTests(TestCase):
-    """La página de un recurso se adapta a su contenido"""
+    """La página de un recurso se adapta a su contenido y solo la ve su dueño"""
+
+    def setUp(self):
+        User.objects.create_user(username='ana', password='pw')
+        User.objects.create_user(username='otro', password='pw')
+        self.client.login(username='ana', password='pw')
 
     def test_cv_profesional_se_muestra_como_ficha(self):
         data = {'personal_info': {'name': 'Ana Pérez', 'email': 'ana@example.com', 'linkedin': 'linkedin.com/in/ana',
                                   'photo': 'data:image/png;base64,AAAA', 'about': 'Hola\r\nAdiós'},
                 'items': [{'platform': 'GitHub', 'id': '1', 'name': 'MiRepo'}]}
-        ContenidoData.objects.create(recurso='cv_profesional_ana', contenido=json.dumps(data))
+        ContenidoData.objects.create(recurso='cv_profesional_ana', usuario='ana', contenido=json.dumps(data))
         response = self.client.get(reverse('detalle_recurso', args=['cv_profesional_ana']))
         self.assertContains(response, 'class="cv-ficha"')
         self.assertContains(response, 'Ana Pérez')
@@ -372,16 +377,43 @@ class DetalleRecursoTests(TestCase):
         self.assertNotContains(response, '"personal_info"')  # no se vuelca el JSON crudo
 
     def test_json_generico_formateado_y_sin_base64(self):
-        ContenidoData.objects.create(recurso='datos', contenido=json.dumps({'img': 'data:image/png;base64,' + 'A' * 500}))
+        ContenidoData.objects.create(recurso='datos', usuario='ana', contenido=json.dumps({'img': 'data:image/png;base64,' + 'A' * 500}))
         response = self.client.get(reverse('detalle_recurso', args=['datos']))
         self.assertContains(response, 'class="contenido-json"')
         self.assertContains(response, '[imagen]')
         self.assertNotContains(response, 'A' * 500)
 
     def test_texto_respeta_saltos_de_linea(self):
-        ContenidoData.objects.create(recurso='nota', contenido='uno\ndos')
+        ContenidoData.objects.create(recurso='nota', usuario='ana', contenido='uno\ndos')
         response = self.client.get(reverse('detalle_recurso', args=['nota']))
         self.assertContains(response, 'uno<br>dos')
+
+    def test_sin_sesion_no_se_ve(self):
+        ContenidoData.objects.create(recurso='nota', usuario='ana', contenido='privado')
+        self.client.logout()
+        response = self.client.get(reverse('detalle_recurso', args=['nota']))
+        self.assertEqual(response.status_code, 302)  # redirige al login
+
+    def test_recurso_ajeno_da_404(self):
+        ContenidoData.objects.create(recurso='nota', usuario='ana', contenido='privado')
+        self.client.login(username='otro', password='pw')
+        response = self.client.get(reverse('detalle_recurso', args=['nota']))
+        self.assertEqual(response.status_code, 404)
+        self.assertNotContains(response, 'privado', status_code=404)
+
+    def test_eliminar_solo_por_post_y_solo_el_dueno(self):
+        ContenidoData.objects.create(recurso='nota', usuario='ana', contenido='x')
+        url = reverse('eliminar_recurso', args=['nota'])
+        # GET ya no borra
+        self.assertEqual(self.client.get(url).status_code, 405)
+        # Otro usuario no puede borrarlo
+        self.client.login(username='otro', password='pw')
+        self.assertEqual(self.client.post(url).status_code, 404)
+        self.assertTrue(ContenidoData.objects.filter(recurso='nota').exists())
+        # El dueño sí
+        self.client.login(username='ana', password='pw')
+        self.assertRedirects(self.client.post(url), reverse('index'))
+        self.assertFalse(ContenidoData.objects.filter(recurso='nota').exists())
 
 
 class ReadmePDFTests(TestCase):
@@ -396,3 +428,19 @@ class ReadmePDFTests(TestCase):
         self.assertIn('<strong>negrita</strong>', html)
         self.assertIn('src="https://raw.githubusercontent.com/ana/proyecto/main/img/logo.png"', html)
         self.assertNotIn('**', html)
+
+
+class RecursoPublicoTests(TestCase):
+    """Lo que puede cargar el PDF: solo http/https hacia hosts públicos"""
+
+    def test_bloquea_direcciones_internas_y_esquemas_raros(self):
+        from .seguridad import recurso_publico
+        for url in ['http://127.0.0.1:8000/', 'http://169.254.169.254/latest/meta-data/',
+                    'http://10.0.0.5/', 'http://[::1]/', 'file:///etc/passwd',
+                    'http://user:pass@8.8.8.8/', 'ftp://8.8.8.8/']:
+            with self.subTest(url=url):
+                self.assertFalse(recurso_publico(url))
+
+    def test_permite_hosts_publicos_con_parametros(self):
+        from .seguridad import recurso_publico
+        self.assertTrue(recurso_publico('https://8.8.8.8/badge?logo=django&color=white'))

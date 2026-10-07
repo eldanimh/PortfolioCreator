@@ -72,12 +72,11 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-        <div class="detail-actions">
-            <a href="{% url 'eliminar_recurso' contenido.recurso %}" class="btn btn-danger"
-               onclick="return confirm('¿Estás seguro de eliminar este recurso?')">
-                🗑 Eliminar recurso
-            </a>
-        </div>
+        <form method="post" action="{% url 'eliminar_recurso' contenido.recurso %}" class="detail-actions"
+              onsubmit="return confirm('¿Estás seguro de eliminar este recurso?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">🗑 Eliminar recurso</button>
+        </form>
         {% endif %}
     </div>
 </div>
