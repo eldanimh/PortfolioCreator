@@ -1,11 +1,12 @@
 {% extends "portfolioCV/base.html" %}
+{% load static %}
 
 {% block title %}Búsqueda OpenAlex — Portfolio Creator{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <a href="{% url 'index' %}" class="back-link">← Volver al inicio</a>
-    <h1 class="page-title">📚 Buscar en OpenAlex</h1>
+    <h1 class="page-title">Buscar en <img src="{% static 'portfolioCV/img/openalex-lockup.png' %}" alt="OpenAlex" style="height: 1em; width: auto; vertical-align: -0.1em;"></h1>
 </div>
 
 <div style="margin-bottom: 2rem; background: var(--card-bg, #fff); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #eaecef);">
