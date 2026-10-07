@@ -380,7 +380,7 @@ def openalex_repo_detalle(request, work_id):
 
     return render(request, 'portfolioCV/repo_detalle.html', {
         'repo': repo,
-        'languages': languages,
+        'languages': _language_bars(languages),
         'error_msg': error_msg,
         'platform': 'OpenAlex',
         'work_id': work_id,
@@ -413,7 +413,7 @@ def gitlab_repo_detalle(request, repo_id):
 
     return render(request, 'portfolioCV/repo_detalle.html', {
         'repo': repo,
-        'languages': languages,
+        'languages': _language_bars(languages),
         'error_msg': error_msg,
         'platform': 'GitLab',
         'repo_id': repo_id,
@@ -446,7 +446,7 @@ def github_repo_detalle(request, owner, repo_name):
 
     return render(request, 'portfolioCV/repo_detalle.html', {
         'repo': repo,
-        'languages': languages,
+        'languages': _language_bars(languages),
         'error_msg': error_msg,
         'platform': 'GitHub',
         'owner': owner,
@@ -610,6 +610,27 @@ def generar_cv_openalex(request, work_id):
         pass
 
     return _generar_pdf(request.user, repo, languages, tree, readme, 'OpenAlex')
+
+def _language_bars(languages):
+    """Lista ordenada de lenguajes con el ancho de barra relativo al mayor.
+
+    La API de GitHub devuelve bytes y las de GitLab/OpenAlex porcentajes
+    (suman ~100), por eso se distingue por el total.
+    """
+    if not languages:
+        return []
+    total = sum(languages.values())
+    maximo = max(languages.values())
+    en_bytes = total > 101
+    bars = []
+    for name, value in sorted(languages.items(), key=lambda kv: kv[1], reverse=True):
+        bars.append({
+            'name': name,
+            'label': f"{value} bytes" if en_bytes else f"{round(value, 1):g}%",
+            'width': round(value / maximo * 100, 1) if maximo > 0 else 0,
+        })
+    return bars
+
 
 def _generar_pdf(user, repo, languages, tree, readme, platform):
     """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub.

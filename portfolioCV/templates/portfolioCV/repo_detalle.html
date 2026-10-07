@@ -67,14 +67,14 @@
     <div class="detail-card">
         <h2 class="detail-section-title">Tecnologías utilizadas</h2>
         <div class="languages-container">
-            {% for lang, value in languages.items %}
+            {% for lang in languages %}
             <div class="lang-item">
                 <div class="lang-header">
-                    <span class="lang-name">{{ lang }}</span>
-                    <span class="lang-pct">{{ value }}{% if value > 100 %} bytes{% else %}%{% endif %}</span>
+                    <span class="lang-name">{{ lang.name }}</span>
+                    <span class="lang-pct">{{ lang.label }}</span>
                 </div>
                 <div class="lang-bar-bg">
-                    <div class="lang-bar-fill" style="width: {% if value > 100 %}50{% else %}{{ value }}{% endif %}%"></div>
+                    <div class="lang-bar-fill" style="width: {{ lang.width|stringformat:"s" }}%"></div>
                 </div>
             </div>
             {% endfor %}
