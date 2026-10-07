@@ -211,7 +211,7 @@ class TestCVBuilder(TestCase):
         self.client = Client()
         self.user = User.objects.create_user(username='cvuser', password='password123')
         self.profile = UserProfile.objects.get(user=self.user)
-        self.profile.nvidia_api_key = 'nv_fake'
+        self.profile.nvidia_api_key = 'nvapi-fake'
         self.profile.save()
         self.client.login(username='cvuser', password='password123')
 
@@ -285,4 +285,71 @@ class TestCVBuilder(TestCase):
         self.assertEqual(mock_openai.call_args.kwargs['base_url'], 'https://api.openai.com/v1')
         create_kwargs = mock_openai.return_value.chat.completions.create.call_args.kwargs
         self.assertEqual(create_kwargs['model'], 'gpt-test')
+        # El parámetro para desactivar el razonamiento solo se manda a NVIDIA
+        self.assertNotIn('extra_body', create_kwargs)
 
+    @patch('openai.OpenAI')
+    def test_stream_resumen_nvidia_desactiva_razonamiento(self, mock_openai):
+        mock_openai.return_value.chat.completions.create.return_value = []
+        response = self.client.post(reverse('stream_resumen_gemini'), {
+            'id': '123', 'cv_type': 'extenso', 'name': 'Project', 'llm_model': 'nvidia-gemma',
+        })
+        b''.join(response.streaming_content)
+        create_kwargs = mock_openai.return_value.chat.completions.create.call_args.kwargs
+        self.assertEqual(create_kwargs['extra_body'],
+                         {'chat_template_kwargs': {'enable_thinking': False}})
+
+
+
+class ProveedorIATests(TestCase):
+    """El proveedor y el modelo de IA se deducen del prefijo de la API Key"""
+
+    def setUp(self):
+        self.profile = User.objects.create_user(username='iauser', password='x').profile
+
+    def _config(self, key, base_url='', model=''):
+        from .ia import configuracion_ia
+        self.profile.nvidia_api_key = key
+        self.profile.ia_base_url = base_url
+        self.profile.ia_model = model
+        return configuracion_ia(self.profile)
+
+    def test_detecta_proveedor_por_prefijo(self):
+        casos = {
+            'nvapi-x': 'nvidia', 'sk-or-v1-x': 'openrouter', 'gsk_x': 'groq',
+            'sk-ant-api03-x': 'anthropic', 'AIzaSyX': 'google', 'xai-x': 'xai',
+            'sk-proj-x': 'openai', 'sk-x': 'openai',
+        }
+        for key, proveedor in casos.items():
+            with self.subTest(key=key):
+                config = self._config(key)
+                self.assertEqual(config['proveedor'], proveedor)
+                self.assertTrue(config['base_url'].startswith('https://'))
+                self.assertTrue(config['modelo'])
+
+    def test_clave_desconocida_sin_url(self):
+        config = self._config('clave-sin-prefijo')
+        self.assertIsNone(config['base_url'])
+
+    def test_url_y_modelo_del_usuario_tienen_prioridad(self):
+        config = self._config('sk-x', base_url='https://api.deepseek.com/v1', model='deepseek-chat')
+        self.assertEqual(config['base_url'], 'https://api.deepseek.com/v1')
+        self.assertEqual(config['modelo'], 'deepseek-chat')
+        self.assertIsNone(config['proveedor'])
+
+    def test_url_conocida_usa_su_modelo_por_defecto(self):
+        from .ia import PROVEEDORES
+        groq = next(p for p in PROVEEDORES if p['id'] == 'groq')
+        config = self._config('clave-cualquiera', base_url=groq['base_url'])
+        self.assertEqual(config['modelo'], groq['modelo'])
+
+    @patch('portfolioCV.ia.requests.get')
+    def test_aviso_si_el_modelo_no_existe(self, mock_get):
+        from .ia import comprobar_configuracion
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {'data': [{'id': 'otro-modelo'}]}
+        self.profile.nvidia_api_key = 'gsk_x'
+        self.assertIn('no aparece', comprobar_configuracion(self.profile))
+
+        mock_get.return_value.json.return_value = {'data': [{'id': 'openai/gpt-oss-20b'}]}
+        self.assertIsNone(comprobar_configuracion(self.profile))

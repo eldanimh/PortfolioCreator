@@ -43,6 +43,12 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"Perfil de {self.user.username}"
 
+    @property
+    def ia(self):
+        """Proveedor y modelo de IA que se usarán (para mostrarlos en las plantillas)"""
+        from .ia import configuracion_ia
+        return configuracion_ia(self)
+
 
 # ─── Tabla ContenidoData ───────────────────────────────────
 # Tabla principal de recursos/contenidos según la especificación del spec.md

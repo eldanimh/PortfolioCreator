@@ -192,7 +192,7 @@ SOCIAL_LOGIN = os.environ.get("SOCIAL_LOGIN", "False") == "True"
 # NVIDIA retira modelos (gemma-2-2b-it dejó de existir el 2026-07-27): si pasa de nuevo,
 # basta con cambiar NVIDIA_MODEL en el entorno.
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_MODEL = os.environ.get("NVIDIA_MODEL", "google/gemma-3-12b-it")
+NVIDIA_MODEL = os.environ.get("NVIDIA_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b")
 
 # --- LOGGING ---
 # Con DEBUG=False Django no muestra los errores 500 en ningún sitio; así salen por consola (docker compose logs).

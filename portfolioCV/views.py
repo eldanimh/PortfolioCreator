@@ -18,6 +18,7 @@ from django.contrib import messages  # Sistema de mensajes flash (se muestran un
 from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
 from .seguridad import url_externa_segura  # Valida URLs que introduce el usuario (anti-SSRF)
+from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
 from django.conf import settings
 
 # ─── URLs base de las APIs externas ────────────────────────
@@ -200,6 +201,9 @@ def configurar_tokens(request):
         if form.is_valid():
             form.save()  # UPDATE userprofile SET github_token='...', gitlab_token='...' WHERE user_id=...
             messages.success(request, '¡Tokens actualizados correctamente!')
+            aviso_ia = comprobar_configuracion(profile)  # ¿La clave y el modelo de IA cuadran?
+            if aviso_ia:
+                messages.warning(request, aviso_ia)
             return redirect('index')
     else:
         form = TokensForm(instance=profile)
@@ -1096,27 +1100,49 @@ def stream_resumen_gemini(request):
                 else:
                     yield f"\n\nError de LM Studio ({resp.status_code}): {resp.text}"
             else:
-                # --- OPCIÓN 2: LLM NUBE (proveedor del usuario; NVIDIA por defecto) ---
+                # --- OPCIÓN 2: LLM NUBE (proveedor deducido de la API Key o el que indique el usuario) ---
                 # Usamos la librería oficial de OpenAI: vale para cualquier API compatible
-                from openai import OpenAI
+                from openai import OpenAI, BadRequestError
                 if not profile.nvidia_api_key:
                     yield "Error: Configura tu API Key de IA en los tokens."
                     return
-                
-                client = OpenAI(
-                  base_url=profile.ia_base_url or settings.NVIDIA_BASE_URL,
-                  api_key=profile.nvidia_api_key,
-                )
-                
-                # Petición al proveedor de IA
-                response = client.chat.completions.create(
-                  model=profile.ia_model or settings.NVIDIA_MODEL,
+
+                # Proveedor y modelo: los de Tokens o, si están vacíos, los deducidos de la clave
+                config = configuracion_ia(profile)
+                if not config['base_url']:
+                    yield "Error: No reconozco el proveedor de tu API Key de IA. Indica su URL en los tokens."
+                    return
+                if not config['modelo']:
+                    yield "Error: Indica el modelo de IA en los tokens."
+                    return
+
+                client = OpenAI(base_url=config['base_url'], api_key=profile.nvidia_api_key)
+
+                peticion = dict(
+                  model=config['modelo'],
                   messages=[{"role":"user", "content": prompt}],
                   temperature=0.2,
-                  top_p=0.7,
                   max_tokens=2048,
                   stream=True  # IMPORTANTE: activa el streaming
                 )
+                # Anthropic no admite temperature y top_p a la vez
+                if config['proveedor'] != 'anthropic':
+                    peticion['top_p'] = 0.7
+                # Los modelos que "razonan" (Nemotron, DeepSeek...) piensan antes de responder
+                # y no envían texto hasta terminar: el resumen llegaba de golpe. En NVIDIA se
+                # desactiva el razonamiento; otros proveedores no conocen este parámetro.
+                if config['proveedor'] == 'nvidia':
+                    peticion['extra_body'] = {'chat_template_kwargs': {'enable_thinking': False}}
+
+                # Petición al proveedor de IA
+                try:
+                    response = client.chat.completions.create(**peticion)
+                except BadRequestError:
+                    if 'extra_body' not in peticion:
+                        raise
+                    # El modelo no admite ese parámetro: se repite sin él
+                    peticion.pop('extra_body')
+                    response = client.chat.completions.create(**peticion)
                 
                 # Bucle: a medida que el proveedor envía fragmentos (chunks), hacemos yield al navegador
                 for chunk in response:
@@ -1127,7 +1153,11 @@ def stream_resumen_gemini(request):
 
     # Retornamos el StreamingHttpResponse, que mantiene la conexión HTTP abierta
     # y va enviando los textos según se ejecutan los "yield" en event_stream()
-    return StreamingHttpResponse(event_stream(), content_type='text/plain; charset=utf-8')
+    response = StreamingHttpResponse(event_stream(), content_type='text/plain; charset=utf-8')
+    # Que ningún proxy (Caddy, nginx...) guarde los trozos en búfer antes de enviarlos
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
 
 
 def _generar_pdf_completo(user, cv_data):
