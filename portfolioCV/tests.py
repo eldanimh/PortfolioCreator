@@ -382,3 +382,17 @@ class DetalleRecursoTests(TestCase):
         ContenidoData.objects.create(recurso='nota', contenido='uno\ndos')
         response = self.client.get(reverse('detalle_recurso', args=['nota']))
         self.assertContains(response, 'uno<br>dos')
+
+
+class ReadmePDFTests(TestCase):
+    """El README se convierte bien a HTML para el PDF"""
+
+    def test_markdown_dentro_de_div_y_rutas_relativas(self):
+        from .views import _readme_a_html
+        readme = '<div align="center">\n\n# Título\n\n**negrita** ![logo](img/logo.png)\n\n</div>\n\nTexto [enlace](https://example.com)'
+        repo = {'full_name': 'ana/proyecto', 'default_branch': 'main'}
+        html = _readme_a_html(readme, repo, 'GitHub')
+        self.assertIn('<h1>Título</h1>', html)
+        self.assertIn('<strong>negrita</strong>', html)
+        self.assertIn('src="https://raw.githubusercontent.com/ana/proyecto/main/img/logo.png"', html)
+        self.assertNotIn('**', html)

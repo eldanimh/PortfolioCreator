@@ -681,6 +681,45 @@ def _language_bars(languages):
     return bars
 
 
+def _readme_a_html(readme, repo, platform):
+    """
+    Convierte el README (Markdown) a HTML para el PDF.
+    - Muchos README envuelven la cabecera en <div align="center">: Markdown no procesa lo
+      que hay dentro de un bloque HTML, y los **, ![]() y [] salían tal cual. Con md_in_html
+      y markdown="1" en esos bloques, su contenido también se convierte.
+    - Las imágenes con ruta relativa (capturas del repo) se apuntan al fichero en bruto
+      del repositorio para que se vean en el PDF.
+    """
+    import re
+    import markdown
+
+    readme = re.sub(
+        r'<(div|section|details|summary|center|p)\b(?![^>]*\bmarkdown=)([^>]*)>',
+        r'<\1\2 markdown="1">',
+        readme,
+        flags=re.IGNORECASE,
+    )
+    html = markdown.markdown(
+        readme,
+        extensions=['extra', 'codehilite', 'tables', 'fenced_code', 'md_in_html'],  # 'extra' ya incluye md_in_html
+    )
+
+    rama = repo.get('default_branch') or 'main'
+    if platform == 'GitHub' and repo.get('full_name'):
+        base = f"https://raw.githubusercontent.com/{repo['full_name']}/{rama}/"
+    elif platform == 'GitLab' and repo.get('web_url'):
+        base = f"{repo['web_url'].rstrip('/')}/-/raw/{rama}/"
+    else:
+        base = None
+    if base:
+        html = re.sub(
+            r'(<img\b[^>]*\bsrc=")(?!https?:|data:|//|#)\.?/?([^"]+)"',
+            lambda m: f'{m.group(1)}{base}{m.group(2)}"',
+            html,
+        )
+    return html
+
+
 def _generar_pdf(user, repo, languages, tree, readme, platform):
     """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub.
     Recibe los datos unificados (da igual si vienen de GitHub o GitLab) y los renderiza en un PDF."""
@@ -721,12 +760,7 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     
     # 1. Preprocesar Markdown
     # Convertimos el texto del README (Markdown) a código HTML para que el PDF lo entienda
-    readme_html = ""
-    if readme:
-        readme_html = markdown.markdown(
-            readme, 
-            extensions=['extra', 'codehilite', 'tables', 'fenced_code']  # Soportar tablas, bloques de código, etc.
-        )
+    readme_html = _readme_a_html(readme, repo, platform) if readme else ""
     
     # 2. Procesar lenguajes (calcular porcentajes)
     processed_languages = []
