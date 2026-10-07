@@ -60,10 +60,10 @@ def index(request):
         if not request.user.is_authenticated:
             messages.error(request, 'Debes iniciar sesión para crear recursos.')
             return redirect('login')  # Redirige a /login/ (HTTP 302)
-        form = ContenidoForm(request.POST)  # request.POST es un diccionario con los datos del body
+        form = ContenidoForm(request.POST, usuario=request.user.username)  # request.POST: datos del body
         if form.is_valid():  # Valida que los campos cumplan las restricciones del modelo
             contenido = form.save(commit=False)  # Crea el objeto PERO no lo guarda aún en la BD
-            contenido.usuario = request.user      # Asignamos el usuario actual antes de guardar
+            contenido.usuario = request.user.username  # Asignamos el usuario actual antes de guardar
             contenido.save()                      # AHORA sí se guarda en SQLite (INSERT INTO...)
             messages.success(request, f'Recurso "{contenido.recurso}" creado correctamente.')
             return redirect('index')  # Redirige a la misma página (patrón POST-Redirect-GET)
@@ -840,7 +840,8 @@ def _get_cv_data(user):
     # Busca el registro o lo crea vacío si no existe
     contenido_obj, created = ContenidoData.objects.get_or_create(
         recurso=recurso_name,
-        defaults={'usuario': user.username, 'contenido': '{}'}
+        usuario=user.username,
+        defaults={'contenido': '{}'}
     )
     try:
         # Deserializar JSON (texto a diccionario Python)

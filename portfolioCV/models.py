@@ -54,9 +54,10 @@ class UserProfile(models.Model):
 # Tabla principal de recursos/contenidos según la especificación del spec.md
 class ContenidoData(models.Model):
     """Tabla Contenido-Data según la especificación"""
-    # Nombre del recurso (unique=True: no puede haber dos con el mismo nombre)
-    # Se usa como identificador en la URL: /<recurso>/
-    recurso = models.CharField(max_length=255, unique=True)
+    # Nombre del recurso. Es único POR USUARIO (ver Meta.constraints): Paco y Dani pueden
+    # tener cada uno su "notas". Se usa como identificador en la URL: /<recurso>/, que
+    # muestra el del usuario que ha iniciado sesión
+    recurso = models.CharField(max_length=255)
     # Contenido del recurso (texto libre o JSON serializado para el CV profesional)
     contenido = models.TextField(blank=True, default='')
     # Nombre del usuario que creó este recurso
@@ -87,6 +88,9 @@ class ContenidoData(models.Model):
         verbose_name = 'Contenido'           # Nombre singular en el admin
         verbose_name_plural = 'Contenidos'   # Nombre plural en el admin
         ordering = ['-fecha_creacion']       # Ordenar por fecha descendente (más reciente primero)
+        constraints = [
+            models.UniqueConstraint(fields=['recurso', 'usuario'], name='recurso_unico_por_usuario'),
+        ]
 
     # Representación en texto (lo que se ve en el admin de Django)
     def __str__(self):

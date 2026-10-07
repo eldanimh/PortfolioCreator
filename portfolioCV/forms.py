@@ -132,3 +132,15 @@ class ContenidoForm(forms.ModelForm):
             # Textarea: campo multilínea para el contenido (4 filas de alto)
             'contenido': forms.Textarea(attrs={'placeholder': 'Contenido del recurso', 'rows': 4}),
         }
+
+    def __init__(self, *args, usuario='', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usuario = usuario
+
+    def clean_recurso(self):
+        """El nombre solo tiene que ser único entre los recursos del propio usuario.
+        (Django no lo comprueba solo porque 'usuario' no es un campo del formulario.)"""
+        recurso = self.cleaned_data['recurso']
+        if ContenidoData.objects.filter(recurso=recurso, usuario=self.usuario).exists():
+            raise forms.ValidationError("Ya tienes un recurso con ese nombre.")
+        return recurso

@@ -444,3 +444,54 @@ class RecursoPublicoTests(TestCase):
     def test_permite_hosts_publicos_con_parametros(self):
         from .seguridad import recurso_publico
         self.assertTrue(recurso_publico('https://8.8.8.8/badge?logo=django&color=white'))
+
+
+class AislamientoRecursosTests(TestCase):
+    """Paco y Dani solo ven, abren y borran sus propios recursos"""
+
+    def setUp(self):
+        User.objects.create_user(username='paco', password='pw')
+        User.objects.create_user(username='dani', password='pw')
+
+    def _crear(self, usuario, nombre, contenido):
+        self.client.login(username=usuario, password='pw')
+        # follow=True: como un navegador, carga la página siguiente y consume el mensaje flash
+        return self.client.post(reverse('index'), {'recurso': nombre, 'contenido': contenido}, follow=True)
+
+    def test_cada_uno_ve_solo_lo_suyo(self):
+        self._crear('paco', 'notas-paco', 'secreto de Paco')
+        self._crear('dani', 'notas-dani', 'secreto de Dani')
+
+        self.client.login(username='dani', password='pw')
+        portada = self.client.get(reverse('index'))
+        self.assertContains(portada, 'notas-dani')
+        self.assertNotContains(portada, 'notas-paco')
+        self.assertEqual(self.client.get(reverse('detalle_recurso', args=['notas-paco'])).status_code, 404)
+
+        self.client.login(username='paco', password='pw')
+        portada = self.client.get(reverse('index'))
+        self.assertContains(portada, 'notas-paco')
+        self.assertNotContains(portada, 'notas-dani')
+        self.assertEqual(self.client.get(reverse('detalle_recurso', args=['notas-dani'])).status_code, 404)
+
+    def test_mismo_nombre_para_dos_usuarios(self):
+        """Si Paco tiene "notas", Dani puede crear su propio "notas" y cada uno ve el suyo"""
+        self._crear('paco', 'notas', 'de Paco')
+        respuesta = self._crear('dani', 'notas', 'de Dani')
+        self.assertNotContains(respuesta, 'Ya tienes un recurso con ese nombre.')
+        self.assertTrue(ContenidoData.objects.filter(recurso='notas', usuario='dani').exists())
+
+        self.client.login(username='dani', password='pw')
+        detalle = self.client.get(reverse('detalle_recurso', args=['notas']))
+        self.assertContains(detalle, 'de Dani')
+        self.assertNotContains(detalle, 'de Paco')
+
+        # Dani borra su "notas"; el de Paco sigue ahí
+        self.client.post(reverse('eliminar_recurso', args=['notas']))
+        self.assertFalse(ContenidoData.objects.filter(recurso='notas', usuario='dani').exists())
+        self.assertTrue(ContenidoData.objects.filter(recurso='notas', usuario='paco').exists())
+
+    def test_nombre_repetido_del_mismo_usuario_da_error(self):
+        self._crear('dani', 'notas', 'uno')
+        respuesta = self._crear('dani', 'notas', 'dos')
+        self.assertContains(respuesta, 'Ya tienes un recurso con ese nombre.')
