@@ -34,11 +34,12 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 - 🤖 **Resúmenes con IA, con tu propia API Key:** pega la clave de NVIDIA, OpenAI, Anthropic, Google Gemini, Groq, OpenRouter o xAI y el proveedor se detecta solo, con un modelo rápido por defecto. También funciona en local con LM Studio.
 - ⚡ **Streaming en vivo:** el texto de la IA aparece al instante, con efecto "máquina de escribir".
 - 🌗 **Modo claro y oscuro:** sigue el tema del dispositivo y se puede cambiar desde la barra superior.
-- 🪪 **Perfil personal:** foto, nombre, titular profesional (p. ej. "Arquitecta · Diseño sostenible"), contacto y un "Acerca de mí" en Markdown. Sirve para cualquier profesión, no solo para perfiles técnicos.
+- 🪪 **Perfil personal:** foto (cualquier formato, incluido HEIC de iPhone, convertida automáticamente a WebP ligero), nombre, titular profesional (p. ej. "Arquitecta · Diseño sostenible"), contacto y un "Acerca de mí" en Markdown. Sirve para cualquier profesión, no solo para perfiles técnicos.
 - 📄 **Exportación:** descarga tu CV en PDF o como HTML autocontenido y responsive, ideal para GitHub Pages. El portfolio web muestra tu titular bajo tu nombre.
 - ⚡ **PDF sin navegador:** los PDF se generan con **Typst** en unos 40 ms y con poca memoria, ideal para un servidor pequeño.
+- 🚦 **Preparado para muchos usuarios:** llamadas a las APIs en paralelo, caché en disco de datos, imágenes y PDFs ya generados, y límite de descargas por usuario.
 - 🔐 **Cuentas y login social:** registro/login clásico y OAuth con **GitHub** y **Google** (django-allauth).
-- 🧪 **Tests con mocks:** 51 pruebas que se ejecutan en segundos sin depender de internet.
+- 🧪 **Tests con mocks:** 60 pruebas que se ejecutan en segundos sin depender de internet.
 
 ## 👤 Datos
 
@@ -84,6 +85,15 @@ La app está desplegada en [creator.danimh.dev](https://creator.danimh.dev), en 
 
 Los PDF se generan con **Typst** (paquete `typst` de Python), así que el contenedor no necesita navegador: las fuentes y el paquete de Markdown que usan las plantillas van dentro del repo, en `portfolioCV/typst/`.
 
+### Preparado para un servidor pequeño (2 GB de RAM, 2 vCPU)
+
+- **gunicorn con hilos** (`gunicorn.conf.py`, se lee solo al arrancar desde la carpeta del proyecto): 3 procesos × 8 hilos atienden 24 peticiones a la vez con unos 300 MB, porque casi todo el tiempo es esperar a APIs externas.
+- **Llamadas en paralelo:** los datos de los proyectos del CV y las imágenes de los README se piden todos a la vez.
+- **Caché en disco** (sin Redis ni RAM extra): datos de las APIs (15 min), imágenes de los README (1 día) y PDFs/HTML ya generados. Repetir una descarga es instantáneo.
+- **Límites por usuario:** una descarga a la vez y como mucho 10 por minuto.
+- **SQLite en modo WAL** para que las lecturas no esperen a las escrituras.
+- **Swap:** `sudo bash scripts/crear_swap.sh` en el servidor crea 2 GB de swap como red de seguridad.
+
 ### Variables de entorno
 
 | Variable | Para qué sirve | Por defecto |
@@ -94,6 +104,9 @@ Los PDF se generan con **Typst** (paquete `typst` de Python), así que el conten
 | `DJANGO_ALLOWED_HOSTS` | Dominios permitidos, separados por comas | `127.0.0.1,localhost` |
 | `SOCIAL_LOGIN` | Muestra los botones de login con GitHub y Google | `False` |
 | `ALLOW_LOCAL_LLM` | Permite usar LM Studio en local; en un servidor debe quedar en `False` | `False` |
+| `DJANGO_CACHE_DIR` | Carpeta de la caché en disco | `.cache/` en la carpeta del proyecto |
+| `GUNICORN_WORKERS` / `GUNICORN_THREADS` | Procesos e hilos de gunicorn | `3` / `8` |
+| `GUNICORN_BIND` | Dirección y puerto donde escucha gunicorn | `0.0.0.0:8000` |
 | `NVIDIA_MODEL` | Modelo por defecto para las claves de NVIDIA, por si NVIDIA retira el actual | `nvidia/nemotron-3.5-lightning-30b-a3b` |
 
 > Para generar una `FIELD_ENCRYPTION_KEY`: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
@@ -113,7 +126,7 @@ Aplicación web orientada a extraer repositorios y documentos de plataformas ext
 - **Motor Generativo de IA (multiproveedor / LM Studio):** IA en la nube con la API Key de cada usuario, mediante el protocolo de `openai`. El proveedor se deduce del prefijo de la clave (`portfolioCV/ia.py`) y, al guardarla, se comprueba que el modelo existe. En NVIDIA se desactiva el razonamiento de los modelos que "piensan" para que el texto empiece a salir al momento. También funciona en local con LM Studio. Lee el código fuente o los metadatos científicos para redactar resúmenes profesionales en Markdown.
 - **Streaming de respuestas HTTP:** la redacción se transmite en vivo con generadores (`yield`) y `StreamingHttpResponse`, sin bloquear el servidor.
 - **Exportación multipropósito (PDF y HTML):** el CV se genera como PDF con plantillas de **Typst** (sin navegador, con las fuentes Inter y Noto Color Emoji incluidas en el repo para que salga igual en cualquier máquina) o como un HTML estático 100% responsive y autocontenido con plantillas de Django.
-- **Testing automatizado (mocks):** 51 pruebas unitarias (`tests.py`) sobre autenticación, formularios, modelos, Hugging Face, detección del proveedor de IA, páginas y permisos de recursos y seguridad del PDF, con `unittest.mock.patch` para simular las APIs externas y la IA.
+- **Testing automatizado (mocks):** 60 pruebas unitarias (`tests.py`) sobre autenticación, formularios, modelos, Hugging Face, detección del proveedor de IA, páginas y permisos de recursos y seguridad del PDF, con `unittest.mock.patch` para simular las APIs externas y la IA.
 - **Modo oscuro:** variables CSS por tema, preferencia del sistema (`prefers-color-scheme`) y elección guardada en `localStorage`, aplicada antes de pintar para evitar parpadeos.
 - **PDF a prueba de inyecciones y SSRF:** los datos del usuario, los README y los textos de IA llegan a Typst como JSON, nunca como código, y el Markdown se renderiza sin poder ejecutar Typst. Typst no accede a la red: las imágenes del README las descarga antes Python, siguiendo cada redirección a mano y solo desde hosts públicos.
 - **Login social (OAuth 2.0):** inicio de sesión con un clic con **GitHub** y **Google**, con creación automática del perfil mediante signals.

@@ -13,16 +13,20 @@ Fuentes y paquetes van dentro del repo: el PDF sale igual en el Mac y en el serv
 (Ubuntu) y nunca se descarga nada al compilar.
 """
 import base64
+import hashlib
 import json
 import os
 import re
 import shutil
 import tempfile
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin
 
 import requests
 import typst
+from django.core.cache import cache
 
 from .seguridad import recurso_publico, MAX_REDIRECCIONES
 
@@ -30,11 +34,33 @@ CARPETA_TYPST = os.path.join(os.path.dirname(__file__), 'typst')
 FUENTES = os.path.join(CARPETA_TYPST, 'fuentes')      # Inter + Noto Color Emoji (la de Ubuntu)
 PAQUETES = os.path.join(CARPETA_TYPST, 'paquetes')    # cmarker (Markdown → Typst)
 
+
+def _version_plantillas():
+    """Huella de las plantillas: si cambian (nuevo despliegue), los PDF guardados en caché dejan de valer."""
+    huella = hashlib.sha256()
+    plantillas = [os.path.join(CARPETA_TYPST, f) for f in sorted(os.listdir(CARPETA_TYPST)) if f.endswith('.typ')]
+    plantillas.append(os.path.join(os.path.dirname(__file__), 'templates', 'portfolioCV', 'cv_web_portfolio_template.html'))
+    for ruta in plantillas:
+        with open(ruta, 'rb') as f:
+            huella.update(f.read())
+    return huella.hexdigest()[:16]
+
+
+VERSION_PLANTILLAS = _version_plantillas()
+
 EXTENSIONES_FOTO = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp'}
 
 MAX_IMAGENES_README = 15
 MAX_BYTES_IMAGEN = 5 * 1024 * 1024
 TIEMPO_MAXIMO_IMAGENES = 15   # segundos en total para descargar las imágenes de un README
+DESCARGAS_SIMULTANEAS = 8      # imágenes del README descargándose a la vez
+CACHE_IMAGENES = 24 * 60 * 60  # una imagen ya descargada se reutiliza durante un día
+
+# Un compilador por proceso: carga las fuentes una sola vez (Noto Color Emoji pesa 11 MB)
+# en vez de en cada PDF: ~10 ms → ~2 ms y ~20 MB menos por PDF. No admite dos
+# compilaciones a la vez, así que los hilos de gunicorn se turnan (cada una dura ms).
+_compilador = None
+_candado_compilador = threading.Lock()
 
 
 class ErrorPDF(Exception):
@@ -51,16 +77,21 @@ def _compilar(plantilla, datos, ficheros=None):
         for nombre, contenido in (ficheros or {}).items():
             with open(os.path.join(carpeta, nombre), 'wb') as f:
                 f.write(contenido)
+        global _compilador
         try:
-            return typst.compile(
-                principal,
-                root=carpeta,                       # Typst no puede leer nada fuera de aquí
-                font_paths=[FUENTES],
-                ignore_system_fonts=True,           # mismas fuentes en cualquier máquina
-                package_path=PAQUETES,
-                package_cache_path=PAQUETES,        # nunca descarga paquetes de internet
-                sys_inputs={'data': json.dumps(datos)},
-            )
+            with _candado_compilador:
+                if _compilador is None:
+                    _compilador = typst.Compiler(
+                        font_paths=[FUENTES],
+                        ignore_system_fonts=True,       # mismas fuentes en cualquier máquina
+                        package_path=PAQUETES,
+                        package_cache_path=PAQUETES,    # nunca descarga paquetes de internet
+                    )
+                return _compilador.compile(
+                    principal,
+                    root=carpeta,                       # Typst no puede leer nada fuera de aquí
+                    sys_inputs={'data': json.dumps(datos)},
+                )
         except Exception as e:
             raise ErrorPDF(str(e)) from e
 
@@ -92,12 +123,12 @@ def _descargar_imagen(url, limite):
                     continue
                 if r.status_code != 200:
                     return None
-                contenido = b''
+                contenido = bytearray()
                 for trozo in r.iter_content(64 * 1024):
                     contenido += trozo
                     if len(contenido) > MAX_BYTES_IMAGEN or time.monotonic() > limite:
                         return None
-                return contenido
+                return bytes(contenido)
         except requests.RequestException:
             return None
     return None
@@ -111,26 +142,40 @@ def _imagenes_readme(readme, base):
     fuentes = re.findall(r'!\[[^\]]*\]\(\s*<?([^)\s>]+)', readme)
     fuentes += re.findall(r'<img\b[^>]*?\bsrc\s*=\s*["\']([^"\']+)["\']', readme, flags=re.IGNORECASE)
 
-    mapa, ficheros = {}, {}
-    limite = time.monotonic() + TIEMPO_MAXIMO_IMAGENES
+    pendientes = []  # (src original, URL absoluta)
     for src in dict.fromkeys(fuentes):  # sin repetidas y en orden
-        if len(ficheros) >= MAX_IMAGENES_README:
-            break
         if src.startswith(('http://', 'https://')):
-            url = src
+            pendientes.append((src, src))
         elif src.startswith('//'):
-            url = 'https:' + src
+            pendientes.append((src, 'https:' + src))
         elif base and not src.startswith(('data:', '#')):
-            url = base + re.sub(r'^\./|^/', '', src)
-        else:
-            continue
-        contenido = _descargar_imagen(url, limite)
+            pendientes.append((src, base + re.sub(r'^\./|^/', '', src)))
+    pendientes = pendientes[:MAX_IMAGENES_README]
+
+    # En paralelo: el README tarda lo que la imagen más lenta, no la suma de todas
+    limite = time.monotonic() + TIEMPO_MAXIMO_IMAGENES
+    with ThreadPoolExecutor(max_workers=DESCARGAS_SIMULTANEAS) as hilos:
+        contenidos = list(hilos.map(lambda p: _imagen_cacheada(p[1], limite), pendientes))
+
+    mapa, ficheros = {}, {}
+    for (src, _), contenido in zip(pendientes, contenidos):
         extension = _tipo_imagen(contenido) if contenido else None
         if extension:
             nombre = f'img{len(ficheros)}.{extension}'
             mapa[src] = nombre
             ficheros[nombre] = contenido
     return mapa, ficheros
+
+
+def _imagen_cacheada(url, limite):
+    """Como _descargar_imagen, pero reutiliza durante un día las que ya se descargaron."""
+    clave = 'readme-img:' + hashlib.sha256(url.encode()).hexdigest()
+    contenido = cache.get(clave)
+    if contenido is None:
+        contenido = _descargar_imagen(url, limite)
+        if contenido:
+            cache.set(clave, contenido, CACHE_IMAGENES)
+    return contenido
 
 
 def _base_raw(repo, platform):

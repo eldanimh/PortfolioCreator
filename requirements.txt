@@ -8,3 +8,6 @@ httpx
 django-allauth
 cryptography
 typst
+pillow
+pillow-heif
+gunicorn

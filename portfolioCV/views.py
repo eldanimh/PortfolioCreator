@@ -1,5 +1,7 @@
 # ─── IMPORTACIONES ─────────────────────────────────────────
 import logging   # Registro de errores (p. ej. si falla la generación de un PDF)
+import hashlib   # Huella de los datos del CV para reutilizar descargas ya generadas
+from concurrent.futures import ThreadPoolExecutor  # Llamadas a las APIs en paralelo
 import json      # Módulo para serializar/deserializar JSON (para el CV profesional)
 import requests  # Librería HTTP para hacer peticiones GET/POST a APIs externas (GitHub, GitLab, OpenAlex)
 from django.shortcuts import render, redirect, get_object_or_404  # Funciones de atajo de Django
@@ -20,9 +22,12 @@ from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
 from .seguridad import url_externa_segura  # Anti-SSRF en las URLs que indica el usuario
 from . import pdf  # PDFs con Typst (sin navegador)
+from . import imagenes  # Foto de perfil → WebP pequeño
+from .descargas import limitar_descargas, cachear_descarga, respuesta_desde_cache, guardar_respuesta
 from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
 from . import huggingface as hf  # Modelos, datasets y Spaces de Hugging Face
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -413,6 +418,8 @@ def huggingface_repo_detalle(request, tipo, owner, repo_name):
 
 
 @login_required
+@limitar_descargas
+@cachear_descarga
 def generar_cv_huggingface(request, tipo, owner, repo_name):
     """PDF de un repo de Hugging Face: datos, ficheros y README (model card)"""
     _tipo_hf_valido(tipo)
@@ -594,6 +601,8 @@ def github_repo_detalle(request, owner, repo_name):
 
 # ─── Generar CV en PDF ─────────────────────────────────────
 @login_required
+@limitar_descargas
+@cachear_descarga
 def generar_cv_gitlab(request, repo_id):
     """Genera un CV en PDF de un repo GitLab. Hace 4 llamadas API para recopilar todos los datos."""
     profile = get_object_or_404(UserProfile, user=request.user)
@@ -637,6 +646,8 @@ def generar_cv_gitlab(request, repo_id):
 
 
 @login_required
+@limitar_descargas
+@cachear_descarga
 def generar_cv_github(request, owner, repo_name):
     """Genera un CV en PDF de un repo GitHub. Hace 4 llamadas API (info, lenguajes, árbol, README)."""
     profile = get_object_or_404(UserProfile, user=request.user)
@@ -688,6 +699,8 @@ def generar_cv_github(request, owner, repo_name):
 
 
 @login_required
+@limitar_descargas
+@cachear_descarga
 def generar_cv_openalex(request, work_id):
     """Genera PDF de una obra de OpenAlex usando la misma plantilla que los repositorios."""
     profile = get_object_or_404(UserProfile, user=request.user)
@@ -794,6 +807,7 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     filename = f"CV_{repo_name}_{platform}.pdf".replace(" ", "_")
     response = HttpResponse(pdf_bytes, content_type='application/pdf')  # Tipo MIME de PDF
     response['Content-Disposition'] = f'attachment; filename="{filename}"'  # Descargar como fichero adjunto
+    response.sin_cache = not repo  # si la API falló, no guardamos un PDF vacío
     return response
 
 
@@ -825,7 +839,15 @@ def _get_cv_data(user):
         data['personal_info'] = {'photo': '', 'name': '', 'headline': '', 'linkedin': '', 'phone': '', 'email': '', 'about': ''}
     if 'items' not in data:
         data['items'] = []
-        
+
+    # Fotos subidas antes de convertirlas a WebP: se optimizan una vez y se guardan
+    foto = data['personal_info'].get('photo') or ''
+    foto_webp = imagenes.data_uri_a_webp(foto)
+    if foto_webp != foto:
+        data['personal_info']['photo'] = foto_webp
+        contenido_obj.contenido = json.dumps(data)
+        contenido_obj.save(update_fields=['contenido'])
+
     return contenido_obj, data
 
 @login_required
@@ -835,15 +857,17 @@ def cv_builder(request):
     
     if request.method == 'POST':
         # El usuario ha enviado el formulario de "Información Personal"
-        import base64
         if 'photo' in request.FILES:  # Si ha subido una foto
-            try:
-                photo_file = request.FILES['photo']
-                # Convierte la foto a Base64: un string gigante que la incrusta directamente en el HTML
-                photo_b64 = base64.b64encode(photo_file.read()).decode('utf-8')
-                data['personal_info']['photo'] = f"data:{photo_file.content_type};base64,{photo_b64}"
-            except Exception:
-                pass
+            photo_file = request.FILES['photo']
+            if photo_file.size > imagenes.MAX_BYTES_SUBIDA:
+                messages.error(request, 'La foto es demasiado grande (máximo 15 MB). No se ha cambiado.')
+            else:
+                try:
+                    # Cualquier formato (JPEG, PNG, HEIC de iPhone...) → WebP pequeño en base64,
+                    # incrustado directamente en el CV, el PDF y el HTML exportado
+                    data['personal_info']['photo'] = imagenes.a_data_uri_webp(photo_file.read())
+                except imagenes.ImagenNoValida:
+                    messages.error(request, 'No se ha podido leer la foto: sube una imagen (JPEG, PNG, WebP, HEIC...). No se ha cambiado.')
         
         # Guarda los textos
         data['personal_info']['name'] = request.POST.get('name', '').strip()
@@ -933,87 +957,104 @@ def eliminar_del_cv(request):
             
     return redirect('cv_builder')
 
+def _datos_actualizados(profile, item):
+    """Descripción, URL y lenguaje al día de un ítem del CV, pidiéndolos a su API ({} si no hay)."""
+    if item['platform'] == 'GitHub':
+        headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
+        resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5)
+        if resp.status_code == 200:
+            rdata = resp.json()
+            return {'description': rdata.get('description', ''), 'url': rdata.get('html_url', ''), 'language': rdata.get('language', '')}
+
+    elif item['platform'] == 'GitLab':
+        headers = {"PRIVATE-TOKEN": profile.gitlab_token}
+        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, allow_redirects=False)
+        if resp.status_code == 200:
+            rdata = resp.json()
+            return {'description': rdata.get('description', ''), 'url': rdata.get('web_url', '')}
+
+    elif item['platform'] == 'Hugging Face':
+        tipo, _, repo_id = item['id'].partition('/')
+        if tipo in hf.TIPOS:
+            rdata = hf.detalle_repo(profile, tipo, repo_id)
+            if rdata:
+                return {'description': rdata['description'], 'url': rdata['html_url'], 'language': rdata['tarea'] or rdata['hf_tipo_label']}
+
+    elif item['platform'] == 'OpenAlex':
+        params = {}
+        if profile.openalex_token:
+            params['api_key'] = profile.openalex_token
+        resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5)
+        if resp.status_code == 200:
+            wdata = resp.json()
+            authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
+            return {'description': authors, 'url': wdata.get('id', ''), 'language': "Publicación OpenAlex"}
+    return {}
+
+
+def _enriquecer_item(profile, item):
+    """El ítem con sus datos al día. Se guardan 15 min en caché para no repetir la llamada."""
+    if item.get('platform') == 'IA Summary':
+        return item  # texto propio, no hay API que consultar
+    clave = f"cv-item:{profile.user_id}:{item.get('platform')}:{item.get('id')}"
+    extra = cache.get(clave)
+    if extra is None:
+        try:
+            extra = _datos_actualizados(profile, item)
+        except Exception:
+            extra = {}  # Si falla, se usa el ítem original sin enriquecer
+        if extra:
+            cache.set(clave, extra, 15 * 60)
+    return {**item, **extra}
+
+
 @login_required
+@limitar_descargas
 def descargar_cv_completo(request):
     """
     Compila el CV profesional.
-    Por cada ítem en la cesta, hace una llamada a su API correspondiente para obtener
-    datos actualizados (descripción, lenguaje) y renderiza el PDF/HTML unificado.
+    Por cada ítem en la cesta, pide a su API los datos actualizados (descripción, lenguaje),
+    todos a la vez, y renderiza el PDF/HTML unificado.
     """
     _, data = _get_cv_data(request.user)
     profile = get_object_or_404(UserProfile, user=request.user)
-    
-    # 1. Enriquecer los datos: descargar info de cada repo en tiempo real
-    enriched_items = []
-    for item in data.get('items', []):
-        try:
-            nuevo_item = item.copy()
-            if item['platform'] == 'GitHub':
-                headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
-                resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5)
-                if resp.status_code == 200:
-                    rdata = resp.json()
-                    nuevo_item['description'] = rdata.get('description', '')
-                    nuevo_item['url'] = rdata.get('html_url', '')
-                    nuevo_item['language'] = rdata.get('language', '')
-                    
-            elif item['platform'] == 'GitLab':
-                headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-                resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, allow_redirects=False)
-                if resp.status_code == 200:
-                    rdata = resp.json()
-                    nuevo_item['description'] = rdata.get('description', '')
-                    nuevo_item['url'] = rdata.get('web_url', '')
-                    
-            elif item['platform'] == 'Hugging Face':
-                tipo, _, repo_id = item['id'].partition('/')
-                if tipo in hf.TIPOS:
-                    rdata = hf.detalle_repo(profile, tipo, repo_id)
-                    if rdata:
-                        nuevo_item['description'] = rdata['description']
-                        nuevo_item['url'] = rdata['html_url']
-                        nuevo_item['language'] = rdata['tarea'] or rdata['hf_tipo_label']
+    formato = 'html' if request.GET.get('format') == 'html' else 'pdf'
 
-            elif item['platform'] == 'OpenAlex':
-                params = {}
-                if profile.openalex_token:
-                    params['api_key'] = profile.openalex_token
-                resp = requests.get(f"https://api.openalex.org/works/{item['id']}", params=params, timeout=5)
-                if resp.status_code == 200:
-                    wdata = resp.json()
-                    authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
-                    nuevo_item['description'] = authors
-                    nuevo_item['url'] = wdata.get('id', '')
-                    nuevo_item['language'] = "Publicación OpenAlex"
-            
-            enriched_items.append(nuevo_item)
-        except Exception:
-            enriched_items.append(item)  # Si falla, añade el ítem original sin enriquecer
-            
-    data['items'] = enriched_items
-            
-    # 2. Descargar como HTML si lo pide el botón
-    if request.GET.get('format') == 'html':
+    # 1. Enriquecer los datos en paralelo: tarda lo que la API más lenta, no la suma de todas
+    with ThreadPoolExecutor(max_workers=8) as hilos:
+        data['items'] = list(hilos.map(lambda item: _enriquecer_item(profile, item), data.get('items', [])))
+
+    # 2. Si ya generamos este mismo CV (mismos datos y plantillas), se sirve el guardado
+    huella = hashlib.sha256(json.dumps([data, formato, pdf.VERSION_PLANTILLAS], sort_keys=True, default=str).encode()).hexdigest()
+    clave = f"cv-completo:{request.user.pk}:{huella}"
+    response = respuesta_desde_cache(clave)
+    if response is not None:
+        return response
+
+    # 3. Descargar como HTML si lo pide el botón
+    if formato == 'html':
         from django.template.loader import render_to_string
         import markdown
         if data['personal_info'].get('about'):
             data['personal_info']['about_html'] = markdown.markdown(data['personal_info']['about'], extensions=['fenced_code', 'tables'])
         else:
             data['personal_info']['about_html'] = ""
-            
+
         # Parsear Markdown de los resúmenes de IA
         for item in data['items']:
             if item.get('platform') == 'IA Summary':
                 item['content_html'] = markdown.markdown(item.get('content', ''), extensions=['fenced_code', 'tables'])
-                
+
         context = {'user': request.user, 'cv': data}
         html_string = render_to_string('portfolioCV/cv_web_portfolio_template.html', context)
         response = HttpResponse(html_string, content_type='text/html; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="cv_profesional.html"'
-        return response
-        
-    # 3. Descargar como PDF (comportamiento por defecto)
-    return _generar_pdf_completo(request.user, data)
+    else:
+        # 4. Descargar como PDF (comportamiento por defecto)
+        response = _generar_pdf_completo(request.user, data)
+
+    guardar_respuesta(clave, response)
+    return response
 
 
 # ─── Integración Inteligencia Artificial (Gemini/Local) ────────

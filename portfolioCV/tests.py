@@ -1,9 +1,19 @@
 import json
-from django.test import TestCase, Client
+from django.core.cache import cache
+from django.test import TestCase as DjangoTestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 from .models import UserProfile, ContenidoData
 from .forms import RegistroForm, TokensForm, ContenidoForm
+
+
+class TestCase(DjangoTestCase):
+    """Cada test empieza con la caché vacía: los límites de descargas y los PDF guardados
+    van por id de usuario, y los ids se repiten entre tests."""
+    def _pre_setup(self):
+        super()._pre_setup()
+        cache.clear()
+
 
 class ModelTests(TestCase):
     def setUp(self):
@@ -644,3 +654,138 @@ class HuggingFaceTests(TestCase):
         mapa, ficheros = pdf._imagenes_readme('![grafica](img/g.png)', pdf._base_raw(repo, 'Hugging Face'))
         self.assertEqual(mock_descarga.call_args.args[0], 'https://huggingface.co/datasets/ana/datos/resolve/main/img/g.png')
         self.assertEqual(mapa, {'img/g.png': 'img0.png'})
+
+
+def _png(ancho=1200, alto=900, modo='RGB'):
+    import io
+    from PIL import Image
+    salida = io.BytesIO()
+    Image.new(modo, (ancho, alto), (30, 120, 200)).save(salida, 'PNG')
+    return salida.getvalue()
+
+
+class FotoWebPTests(TestCase):
+    """La foto de perfil, sea del formato que sea, se guarda como WebP pequeño"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='foto', password='password123')
+        self.client.login(username='foto', password='password123')
+
+    def _cv(self):
+        from .views import _get_cv_data
+        return _get_cv_data(self.user)[1]
+
+    def test_png_grande_se_guarda_como_webp_reducido(self):
+        import base64, io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        foto = SimpleUploadedFile('foto.png', _png(), content_type='image/png')
+        self.client.post(reverse('cv_builder'), {'name': 'Ana', 'photo': foto})
+        guardada = self._cv()['personal_info']['photo']
+        self.assertTrue(guardada.startswith('data:image/webp;base64,'))
+        imagen = Image.open(io.BytesIO(base64.b64decode(guardada.split(',', 1)[1])))
+        self.assertEqual(imagen.format, 'WEBP')
+        self.assertLessEqual(max(imagen.size), 512)
+        self.assertEqual(imagen.size, (512, 384))  # mantiene la proporción
+
+    def test_fichero_que_no_es_imagen_no_cambia_la_foto(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        falso = SimpleUploadedFile('foto.png', b'<script>alert(1)</script>', content_type='image/png')
+        response = self.client.post(reverse('cv_builder'), {'name': 'Ana', 'photo': falso}, follow=True)
+        self.assertContains(response, 'No se ha podido leer la foto')
+        self.assertEqual(self._cv()['personal_info']['photo'], '')
+        self.assertEqual(self._cv()['personal_info']['name'], 'Ana')  # el resto sí se guarda
+
+    def test_foto_antigua_se_convierte_al_leer_el_cv(self):
+        import base64
+        ContenidoData.objects.create(recurso='cv_profesional_foto', usuario='foto', contenido=json.dumps({
+            'personal_info': {'photo': 'data:image/png;base64,' + base64.b64encode(_png()).decode()}, 'items': []}))
+        self.assertTrue(self._cv()['personal_info']['photo'].startswith('data:image/webp;base64,'))
+        guardado = json.loads(ContenidoData.objects.get(recurso='cv_profesional_foto').contenido)
+        self.assertTrue(guardado['personal_info']['photo'].startswith('data:image/webp;base64,'))  # convertida una sola vez
+
+
+class DescargasMasivasTests(TestCase):
+    """Límites por usuario, caché de descargas y llamadas a las APIs en paralelo"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='masivo', password='password123')
+        self.client.login(username='masivo', password='password123')
+        items = [{'platform': 'GitHub', 'id': f'ana/repo{i}', 'name': f'Repo {i}'} for i in range(6)]
+        ContenidoData.objects.create(recurso='cv_profesional_masivo', usuario='masivo',
+                                     contenido=json.dumps({'personal_info': {'name': 'Ana'}, 'items': items}))
+        self.url = reverse('descargar_cv_completo') + '?format=html'
+
+    @staticmethod
+    def _api_lenta(profile, item):
+        import time
+        time.sleep(0.3)
+        return {'description': f"Descripción de {item['id']}"}
+
+    def test_apis_en_paralelo_en_orden_y_cacheadas(self):
+        import time
+        with patch('portfolioCV.views._datos_actualizados', side_effect=self._api_lenta) as mock_api:
+            inicio = time.monotonic()
+            response = self.client.get(self.url)
+            duracion = time.monotonic() - inicio
+            self.assertEqual(mock_api.call_count, 6)
+            self.assertLess(duracion, 1.2)  # en serie serían 6 × 0,3 = 1,8 s
+            html = response.content.decode()
+            posiciones = [html.index(f'Descripción de ana/repo{i}') for i in range(6)]
+            self.assertEqual(posiciones, sorted(posiciones))  # mismo orden que en el CV
+
+            self.client.get(self.url)  # segunda descarga: datos y HTML desde la caché
+            self.assertEqual(mock_api.call_count, 6)
+
+    def test_maximo_de_descargas_por_minuto(self):
+        from .descargas import MAX_POR_MINUTO
+        with patch('portfolioCV.views._datos_actualizados', return_value={}):
+            for _ in range(MAX_POR_MINUTO):
+                self.assertEqual(self.client.get(self.url).status_code, 200)
+            response = self.client.get(self.url, follow=True)
+        self.assertContains(response, 'Has hecho muchas descargas seguidas')
+
+    def test_una_descarga_a_la_vez_por_usuario(self):
+        cache.add(f'descargando:{self.user.pk}', 1, 60)  # otra descarga del mismo usuario en marcha
+        response = self.client.get(self.url, follow=True)
+        self.assertContains(response, 'Ya tienes una descarga en marcha')
+
+    def test_pdf_de_repo_cacheado_sin_volver_a_llamar_a_github(self):
+        from unittest.mock import MagicMock
+        def respuesta(url, **kwargs):
+            r = MagicMock(status_code=200)
+            r.json.return_value = {'name': 'repo', 'full_name': 'ana/repo', 'default_branch': 'main'} if url.endswith('/repos/ana/repo') else {}
+            r.text = '# Repo'
+            return r
+        url = reverse('generar_cv_github', args=['ana', 'repo'])
+        with patch('portfolioCV.views.requests.get', side_effect=respuesta) as mock_get:
+            primera = self.client.get(url)
+            llamadas = mock_get.call_count
+            segunda = self.client.get(url)
+        self.assertEqual(primera.status_code, 200)
+        self.assertEqual(primera.content, segunda.content)
+        self.assertEqual(mock_get.call_count, llamadas)  # la segunda no llama a GitHub
+
+    def test_pdf_de_repo_vacio_no_se_cachea(self):
+        from unittest.mock import MagicMock
+        url = reverse('generar_cv_github', args=['ana', 'caido'])
+        with patch('portfolioCV.views.requests.get', return_value=MagicMock(status_code=503)) as mock_get:
+            self.client.get(url)
+            llamadas = mock_get.call_count
+            self.client.get(url)
+        self.assertEqual(mock_get.call_count, llamadas * 2)  # GitHub caído: se reintenta la próxima vez
+
+
+class ImagenesReadmeParaleloTests(TestCase):
+    def test_orden_del_readme_aunque_lleguen_desordenadas(self):
+        import time
+        from . import pdf
+        def descarga(url, limite):
+            time.sleep(0.2 if url.endswith('a.png') else 0)  # la primera tarda más
+            return _png(10, 10)
+        with patch('portfolioCV.pdf._descargar_imagen', side_effect=descarga):
+            mapa, ficheros = pdf._imagenes_readme('![](https://8.8.8.8/a.png) ![](https://8.8.8.8/b.png)', None)
+        self.assertEqual(mapa, {'https://8.8.8.8/a.png': 'img0.png', 'https://8.8.8.8/b.png': 'img1.png'})
+        with patch('portfolioCV.pdf._descargar_imagen') as mock_descarga:  # ya en caché
+            pdf._imagenes_readme('![](https://8.8.8.8/a.png)', None)
+        mock_descarga.assert_not_called()

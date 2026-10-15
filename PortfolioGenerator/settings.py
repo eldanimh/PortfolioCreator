@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -124,8 +125,29 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # gunicorn atiende varias peticiones a la vez (hilos): WAL deja leer mientras otro
+        # escribe, IMMEDIATE evita bloqueos al pasar de leer a escribir y timeout espera
+        # su turno en vez de fallar con "database is locked".
+        'OPTIONS': {
+            'timeout': 20,
+            'transaction_mode': 'IMMEDIATE',
+            'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;',
+        },
     }
 }
+
+# Caché en disco (no gasta RAM ni necesita Redis): datos de las APIs, imágenes de los
+# README y PDFs ya generados. En los tests, en memoria para que no se mezclen ejecuciones.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.environ.get('DJANGO_CACHE_DIR', str(BASE_DIR / '.cache')),
+        'TIMEOUT': 15 * 60,
+        'OPTIONS': {'MAX_ENTRIES': 20000, 'CULL_FREQUENCY': 4},
+    }
+}
+if 'test' in sys.argv:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
 
 
 # Password validation
