@@ -178,6 +178,38 @@ def _imagen_cacheada(url, limite):
     return contenido
 
 
+ALERTA_GITHUB = re.compile(r'^\s{0,3}>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$', re.IGNORECASE)
+
+
+def _alertas_github(texto):
+    """
+    Las alertas de GitHub (> [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]) no son
+    Markdown estándar: se convierten en <gh-alerta tipo="note">…</gh-alerta>, que la plantilla
+    pinta como GitHub (barra de color, icono y título). Dentro de bloques de código no se tocan.
+    """
+    lineas = (texto or '').split('\n')
+    salida, i, valla = [], 0, None
+    while i < len(lineas):
+        linea = lineas[i]
+        marca = re.match(r'^\s{0,3}(`{3,}|~{3,})', linea)
+        if marca:  # abre o cierra un bloque de código
+            if valla is None:
+                valla = marca.group(1)[0] * 3
+            elif linea.strip().startswith(valla):
+                valla = None
+        alerta = ALERTA_GITHUB.match(linea) if valla is None else None
+        if not alerta:
+            salida.append(linea)
+            i += 1
+            continue
+        cuerpo, i = [], i + 1
+        while i < len(lineas) and re.match(r'^\s{0,3}>', lineas[i]):
+            cuerpo.append(re.sub(r'^\s{0,3}> ?', '', lineas[i]))
+            i += 1
+        salida += ['', f'<gh-alerta tipo="{alerta.group(1).lower()}">', '', *cuerpo, '', '</gh-alerta>', '']
+    return '\n'.join(salida)
+
+
 def _base_raw(repo, platform):
     """URL donde están los ficheros en bruto del repo, para las imágenes con ruta relativa."""
     rama = repo.get('default_branch') or 'main'
@@ -192,7 +224,7 @@ def _base_raw(repo, platform):
 
 def cv_repo(user, repo, lenguajes, tree, readme, platform):
     """PDF de un repositorio u obra: datos, lenguajes ([{name, pct}]), árbol de ficheros y README."""
-    readme = readme or ''
+    readme = _alertas_github(readme or '')
     datos = {
         'username': user.username,
         'platform': platform,
@@ -232,6 +264,9 @@ def cv_profesional(user, cv_data):
         'items': [i for i in cv_data.get('items', []) if isinstance(i, dict)],
         'foto': None,
     }
+    # Los resúmenes de la IA a veces copian alertas de GitHub del README
+    info['about'] = _alertas_github(info.get('about') or '')
+    datos['items'] = [{**i, 'content': _alertas_github(i['content'])} if i.get('content') else i for i in datos['items']]
     ficheros = {}
     # La foto es un data URI en base64: solo imágenes, nunca una URL externa
     if foto.startswith('data:image/') and ';base64,' in foto:

@@ -868,3 +868,23 @@ class ProyectosEnriquecidosTests(TestCase):
         for esperado in ['ana.dev', 'github.com/ana/web', '#astro', 'Astro 85 %', '1.520', 'MIT', '2024 – oct 2026']:
             self.assertIn(esperado, texto)
 
+
+class AlertasGitHubTests(TestCase):
+    """> [!NOTE] y compañía se pintan como en GitHub, no como texto"""
+
+    def test_conversion_respeta_bloques_de_codigo(self):
+        from .pdf import _alertas_github
+        texto = _alertas_github('> [!WARNING]\n> Cuidado\n\n```\n> [!TIP]\n```\n> cita')
+        self.assertIn('<gh-alerta tipo="warning">', texto)
+        self.assertIn('Cuidado', texto)
+        self.assertIn('```\n> [!TIP]\n```', texto)  # dentro de código no se toca
+        self.assertTrue(texto.endswith('> cita'))       # una cita normal sigue siendo cita
+
+    def test_pdf_muestra_titulo_y_no_la_marca(self):
+        from . import pdf
+        readme = '> [!NOTE]\n> En iPhone con modo ahorro de batería no hay autoplay.'
+        texto = _texto_pdf(pdf.cv_repo(User(username='ana'), {'name': 'web'}, [], [], readme, 'GitHub'))
+        self.assertIn('Nota', texto)
+        self.assertIn('modo ahorro de batería', texto)
+        self.assertNotIn('[!NOTE]', texto)
+
