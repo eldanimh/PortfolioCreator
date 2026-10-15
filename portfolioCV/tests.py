@@ -815,3 +815,12 @@ class LenguajesTests(TestCase):
     def test_gitlab_solo_porcentaje(self):
         from .views import _language_bars
         self.assertEqual([b['label'] for b in _language_bars({'Python': 65.24, 'Shell': 34.76})], ['65,2 %', '34,8 %'])
+
+
+class VistaPreviaCompartirTests(TestCase):
+    def test_etiquetas_open_graph_con_imagen_absoluta(self):
+        response = self.client.get(reverse('index'), secure=True)
+        self.assertContains(response, '<meta property="og:title" content="Portfolio Creator">', html=True)
+        self.assertContains(response, 'content="https://testserver/static/portfolioCV/img/og-image.jpg?v=1"')
+        self.assertContains(response, '<meta name="twitter:card" content="summary_large_image">', html=True)
+
