@@ -18,7 +18,8 @@ from django.contrib.auth.forms import AuthenticationForm  # Formulario de login 
 from django.contrib import messages  # Sistema de mensajes flash (se muestran una vez al usuario)
 from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
-from .seguridad import url_externa_segura, pagina_pdf_segura  # Anti-SSRF en URLs del usuario y en el PDF
+from .seguridad import url_externa_segura  # Anti-SSRF en las URLs que indica el usuario
+from .pdf import html_a_pdf, ServidorOcupado  # HTML → PDF con Chromium, con límite de PDFs simultáneos
 from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
 from . import huggingface as hf  # Modelos, datasets y Spaces de Hugging Face
 from django.conf import settings
@@ -808,6 +809,14 @@ def _readme_a_html(readme, repo, platform):
     return html
 
 
+def _respuesta_servidor_ocupado():
+    """Respuesta cuando ya se están generando demasiados PDFs a la vez."""
+    return HttpResponse(
+        "<h1>Servidor ocupado</h1><p>Se están generando otros PDFs ahora mismo. Inténtalo de nuevo en unos segundos.</p>",
+        status=503,
+    )
+
+
 def _generar_pdf(user, repo, languages, tree, readme, platform):
     """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub.
     Recibe los datos unificados (da igual si vienen de GitHub o GitLab) y los renderiza en un PDF."""
@@ -815,7 +824,7 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     import markdown
     
     try:
-        from playwright.sync_api import sync_playwright
+        import playwright.sync_api  # noqa: F401 (solo comprobamos que está instalado)
     except ImportError:
         error_html = """
         <!DOCTYPE html>
@@ -882,25 +891,14 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
     
     # 5. Renderizar el PDF usando Headless Chromium (Playwright)
     # Abre un navegador oculto, carga el HTML y le pide imprimir a PDF
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = pagina_pdf_segura(browser)  # Sin JavaScript ni peticiones a la red interna
-        page.set_content(html_string, wait_until='networkidle')  # Espera a que carguen imágenes/CSS
-        
-        # Header/Footer content para Playwright (debe ser HTML inyectado en el PDF)
-        repo_name = repo.get('name', repo.get('path', 'Repositorio'))
-        header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">Portfolio CV — {user.username} — {platform}</div>'
-        footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
-        
-        pdf_bytes = page.pdf(
-            format="A4",
-            print_background=True,  # Imprimir colores de fondo y CSS
-            margin={'top': '25mm', 'bottom': '25mm', 'left': '15mm', 'right': '15mm'},
-            display_header_footer=True,
-            header_template=header_html,
-            footer_template=footer_html
-        )
-        browser.close()
+    # Header/Footer content para Playwright (debe ser HTML inyectado en el PDF)
+    repo_name = repo.get('name', repo.get('path', 'Repositorio'))
+    header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">Portfolio CV — {user.username} — {platform}</div>'
+    footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+    try:
+        pdf_bytes = html_a_pdf(html_string, header_html, footer_html)
+    except ServidorOcupado:
+        return _respuesta_servidor_ocupado()
 
     # Escribir los bytes generados por el navegador en nuestro buffer de memoria
     buffer.write(pdf_bytes)
@@ -1369,7 +1367,7 @@ def _generar_pdf_completo(user, cv_data):
     from django.template.loader import render_to_string
     import markdown
     try:
-        from playwright.sync_api import sync_playwright
+        import playwright.sync_api  # noqa: F401 (solo comprobamos que está instalado)
     except ImportError:
         error_html = """
         <!DOCTYPE html>
@@ -1413,21 +1411,12 @@ def _generar_pdf_completo(user, cv_data):
     context = {'user': user, 'cv': cv_data}
     html_string = render_to_string('portfolioCV/cv_profesional_template.html', context)
     
+    header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'
+    footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = pagina_pdf_segura(browser)  # Sin JavaScript ni peticiones a la red interna
-            page.set_content(html_string, wait_until='networkidle')
-            
-            header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'
-            footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
-            
-            pdf_bytes = page.pdf(
-                format="A4", print_background=True,
-                margin={'top': '25mm', 'bottom': '25mm', 'left': '15mm', 'right': '15mm'},
-                display_header_footer=True, header_template=header_html, footer_template=footer_html
-            )
-            browser.close()
+        pdf_bytes = html_a_pdf(html_string, header_html, footer_html)
+    except ServidorOcupado:
+        return _respuesta_servidor_ocupado()
     except Exception as e:
         return HttpResponse(f"<h1>Error al generar PDF</h1><p>{str(e)}</p>", status=500)
 
