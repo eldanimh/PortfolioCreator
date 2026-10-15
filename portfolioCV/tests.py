@@ -472,6 +472,7 @@ class PDFTypstTests(TestCase):
         self.assertNotIn('785ae689', texto)
         self.assertNotIn('ID:', texto)
         self.assertNotIn('Plataforma Portfolio Creator', texto)
+        self.assertIn('Creado con Portfolio Creator', texto)  # pie de cada página, enlazado a creator.danimh.dev
 
     def test_cv_profesional_con_foto(self):
         import base64

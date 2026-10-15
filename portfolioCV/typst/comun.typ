@@ -52,7 +52,13 @@
 #let pie = context {
   line(length: 100%, stroke: 0.75pt + border-suave)
   v(-6pt)
-  align(center, text(size: 6pt, fill: text-muted)[#counter(page).display() / #counter(page).final().first()])
+  grid(
+    columns: (1fr, auto, 1fr),
+    align: (left, center, right),
+    text(size: 6pt, fill: text-muted)[Creado con #link("https://creator.danimh.dev", text(fill: primary)[Portfolio Creator])],
+    text(size: 6pt, fill: text-muted)[#counter(page).display() / #counter(page).final().first()],
+    [],
+  )
 }
 
 #let cabecera(texto) = align(right, text(size: 6.75pt, fill: text-muted, texto))
