@@ -67,3 +67,43 @@ def html_a_pdf(html_string, header_html, footer_html):
     finally:
         hueco.close()
 
+
+# ─── Experimento: CV profesional con Typst (sin navegador) ─────────────
+PLANTILLA_TYPST = os.path.join(os.path.dirname(__file__), 'templates', 'portfolioCV', 'cv_profesional.typ')
+EXTENSIONES_FOTO = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp'}
+
+
+def cv_profesional_typst(cv_data, username):
+    """
+    PDF del CV profesional con Typst. Los datos van como JSON (sys_inputs), nunca dentro
+    del código Typst. La foto (data URI en base64) se escribe en una carpeta temporal,
+    que es lo único que la plantilla puede leer.
+    """
+    import base64
+    import json
+    import shutil
+    import typst
+
+    info = cv_data.get('personal_info', {})
+    linkedin = (info.get('linkedin') or '').strip()
+    datos = {
+        'username': username,
+        'personal_info': info,
+        'linkedin_url': linkedin if linkedin.startswith(('http://', 'https://')) else 'https://' + linkedin,
+        'items': [i for i in cv_data.get('items', []) if isinstance(i, dict)],
+        'foto': None,
+    }
+    with tempfile.TemporaryDirectory() as carpeta:
+        shutil.copy(PLANTILLA_TYPST, os.path.join(carpeta, 'cv.typ'))
+        foto = info.get('photo') or ''
+        if foto.startswith('data:image/') and ';base64,' in foto:
+            mime, b64 = foto[5:].split(';base64,', 1)
+            extension = EXTENSIONES_FOTO.get(mime)
+            if extension:
+                with open(os.path.join(carpeta, f'foto.{extension}'), 'wb') as f:
+                    f.write(base64.b64decode(b64))
+                datos['foto'] = f'foto.{extension}'
+        return typst.compile(
+            os.path.join(carpeta, 'cv.typ'), root=carpeta,
+            sys_inputs={'data': json.dumps(datos)},
+        )

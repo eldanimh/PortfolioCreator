@@ -8,3 +8,4 @@ playwright
 httpx
 django-allauth
 cryptography
+typst
