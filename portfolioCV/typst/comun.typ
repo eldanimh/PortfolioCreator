@@ -33,10 +33,13 @@
   }))
 }
 
-#let md(texto, imagenes: (:)) = cmarker.render(
+// nivel-titulos: a qué nivel bajan los "# Título" del Markdown (3 → por debajo de las
+// secciones del documento, para que un resumen de la IA no tenga títulos más grandes que el CV)
+#let md(texto, imagenes: (:), nivel-titulos: 1) = cmarker.render(
   texto,
   raw-typst: false,
   set-document-title: false,
+  h1-level: nivel-titulos,
   // <p align="center"> y <div align="center">, típicos en la cabecera de los README
   html: (p: (attrs, cuerpo) => block(alineado(attrs, cuerpo)), div: (attrs, cuerpo) => alineado(attrs, cuerpo)),
   scope: (image: (source, alt: none, ..args) => {

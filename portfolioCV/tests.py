@@ -461,6 +461,18 @@ class PDFTypstTests(TestCase):
         self.assertIn('#panic("item")', texto)
         self.assertIn('#read(', texto)  # el Markdown pone comillas tipográficas: #read(“main.typ”)
 
+    def test_cv_profesional_muestra_titular_y_oculta_ids(self):
+        from . import pdf
+        cv = {'personal_info': {'name': 'Ana Pérez', 'headline': 'Arquitecta · Diseño sostenible'},
+              'items': [{'id': '785ae689-d03e-40d7', 'name': 'Resumen IA - Casa', 'platform': 'IA Summary', 'content': '# Título enorme\nTexto'},
+                        {'id': 'ana/casa', 'name': 'casa', 'platform': 'GitHub'}]}
+        texto = _texto_pdf(pdf.cv_profesional(self.user, cv))
+        self.assertIn('Arquitecta · Diseño sostenible', texto)
+        self.assertIn('CV Profesional — Ana Pérez', texto)  # cabecera con el nombre, no el usuario
+        self.assertNotIn('785ae689', texto)
+        self.assertNotIn('ID:', texto)
+        self.assertNotIn('Plataforma Portfolio Creator', texto)
+
     def test_cv_profesional_con_foto(self):
         import base64
         from . import pdf

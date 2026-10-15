@@ -19,13 +19,13 @@
   text(fill: rgb("#d73a49"), size: 9.5pt, it),
 )
 #show heading: set text(fill: rgb("#1a1a2e"), weight: "bold")
-#show heading: set block(above: 15pt, below: 10pt)
-#show heading.where(level: 1): it => block(above: 15pt, below: 12pt, {
+#show heading: set block(above: 15pt, below: 10pt, sticky: true)
+#show heading.where(level: 1): it => block(above: 15pt, below: 12pt, sticky: true, {
   text(size: 24pt, it.body)
   v(-4pt)
   line(length: 100%, stroke: 1.5pt + border-suave)
 })
-#show heading.where(level: 2): it => block(above: 18pt, below: 10pt, {
+#show heading.where(level: 2): it => block(above: 18pt, below: 10pt, sticky: true, {
   text(size: 18pt, it.body)
   v(-4pt)
   line(length: 100%, stroke: 0.75pt + border-suave)

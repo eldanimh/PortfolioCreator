@@ -1182,6 +1182,10 @@ def stream_resumen_gemini(request):
             'tfg': "RESPONDE OBLIGATORIAMENTE Y SIEMPRE EN ESPAÑOL. Genera un resumen en formato de TRABAJO FIN DE GRADO (TFG) académico. Incluye: Título, Resumen/Abstract, Introducción, Objetivos, Metodología, Tecnologías, Resultados esperados, y Conclusiones. Usa tono académico formal.",
         }
         prompt = prompts_map.get(cv_type, prompts_map['extenso'])
+        # El texto va tal cual al CV: nada de "Aquí tienes tu CV..." ni datos inventados
+        prompt += (" Empieza directamente con el contenido, sin introducciones, saludos ni comentarios"
+                   " sobre lo que vas a hacer, y sin despedidas al final. Usa solo la información del"
+                   " contenido del proyecto: no inventes tecnologías, ficheros, cifras ni datos que no aparezcan en él.")
         prompt += f"\n\nContenido del proyecto:\n{contenido_texto}"
 
         try:

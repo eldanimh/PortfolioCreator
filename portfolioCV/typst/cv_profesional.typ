@@ -5,12 +5,13 @@
 
 #let d = json(bytes(sys.inputs.data))
 #let info = d.personal_info
+#let nombre = if info.at("name", default: "") != "" { info.name } else { d.username }
 
 #set document(title: "Curriculum Vitae Profesional")
 #set page(
   paper: "a4",
   margin: (top: 25mm, bottom: 25mm, left: 15mm, right: 15mm),
-  header: cabecera[CV Profesional — #d.username],
+  header: cabecera[CV Profesional — #nombre],
   footer: pie,
 )
 #set text(font: fuentes, size: 11pt, fill: text-main, lang: "es")
@@ -19,11 +20,18 @@
 #set enum(spacing: 0.75em, indent: 6pt)
 #show: estilos-markdown
 #show raw.where(block: false): it => box(fill: bg-muted, inset: (x: 3pt), outset: (y: 2.5pt), radius: 3pt, it)
-#show heading.where(level: 2): it => block(below: 11pt, above: 18pt, {
+// sticky: un título nunca se queda solo al final de una página, separado de su contenido
+#show heading.where(level: 2): it => block(below: 11pt, above: 18pt, sticky: true, {
   text(size: 16pt, weight: "bold", it.body)
   v(-2pt)
   line(length: 100%, stroke: 0.75pt + border-c)
 })
+// Títulos dentro de "Sobre mí" y de los resúmenes de la IA (su "#" llega como nivel 3)
+#show heading.where(level: 3): it => block(above: 12pt, below: 6pt, sticky: true, text(size: 12.5pt, weight: "bold", it.body))
+#show heading.where(level: 4): it => block(above: 10pt, below: 5pt, sticky: true, text(size: 11pt, weight: "bold", it.body))
+#show heading: it => if it.level >= 5 {
+  block(above: 8pt, below: 4pt, sticky: true, text(size: 10.5pt, weight: "bold", it.body))
+} else { it }
 
 #let badge(cuerpo, fondo: bg-muted, color: text-main, borde: border-c) = box(
   fill: fondo, stroke: if borde == none { none } else { 0.75pt + borde },
@@ -39,15 +47,12 @@
 )
 
 // ── Cabecera ──────────────────────────────────────────────
-#let nombre = if info.at("name", default: "") != "" { info.name } else { d.username }
 #let contacto = ()
 #if info.at("phone", default: "") != "" { contacto.push[📞 #info.phone] }
 #if info.at("email", default: "") != "" { contacto.push[✉️ #info.email] }
 #if info.at("linkedin", default: "") != "" {
   contacto.push[🔗 #link(d.linkedin_url, text(fill: primary, info.linkedin))]
 }
-#contacto.push[👤 Plataforma Portfolio Creator]
-
 #block(below: 15pt, {
   grid(
     columns: if d.foto != none { (75pt, 1fr) } else { (1fr,) },
@@ -57,8 +62,14 @@
                         image(d.foto, width: 75pt, height: 75pt, fit: "cover")),) },
     {
       text(size: 24pt, weight: "bold", nombre)
-      v(-4pt)
-      text(size: 10pt, fill: text-muted, contacto.map(box).join(h(11pt)))
+      if info.at("headline", default: "") != "" {
+        v(-6pt)
+        text(size: 12.5pt, fill: text-muted, weight: "medium", info.headline)
+      }
+      if contacto.len() > 0 {
+        v(-4pt)
+        text(size: 10pt, fill: text-muted, contacto.map(box).join(h(11pt)))
+      }
     },
   )
   v(4pt)
@@ -69,7 +80,7 @@
 #if info.at("about", default: "") != "" [
   == Sobre Mí
   #block(width: 100%, fill: bg-muted, inset: 11pt, radius: 4.5pt, stroke: 0.75pt + border-c,
-    text(size: 10.5pt, md(info.about)))
+    text(size: 10.5pt, md(info.about, nivel-titulos: 3)))
 ]
 
 // ── Proyectos ─────────────────────────────────────────────
@@ -82,6 +93,8 @@
     let plataforma = item.at("platform", default: "")
     let (fondo, color) = colores-plataforma.at(plataforma, default: (rgb("#fc6d26"), white))
     block(below: 20pt, {
+      // Título, etiquetas y descripción van juntos y pegados a lo que sigue (sin huérfanos)
+      block(breakable: false, sticky: true, below: 8pt, {
       grid(
         columns: (auto, 1fr),
         column-gutter: 8pt,
@@ -97,16 +110,15 @@
           h(4pt)
           badge[💻 #item.language]
         }
-        h(8pt)
-        [ID: #str(item.at("id", default: ""))]
       })
       if item.at("description", default: none) not in (none, "") {
         v(-2pt)
         text(size: 10pt, str(item.description))
       }
+      })
       if plataforma == "IA Summary" and item.at("content", default: "") != "" {
         block(width: 100%, fill: bg-muted, inset: 7.5pt, radius: 4.5pt, stroke: 0.75pt + border-c,
-          text(size: 10pt, md(item.content)))
+          text(size: 10pt, md(item.content, nivel-titulos: 3)))
       }
     })
   }
