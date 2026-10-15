@@ -13,6 +13,7 @@
 ![OpenAlex](https://img.shields.io/badge/OpenAlex-API-orange)
 ![Hugging Face](https://img.shields.io/badge/Hugging%20Face-FFD21E?logo=huggingface&logoColor=black)
 ![IA](https://img.shields.io/badge/IA-NVIDIA%20%7C%20OpenAI%20%7C%20Gemini%20%7C%20LM%20Studio-76B900)
+![Typst](https://img.shields.io/badge/PDF-Typst-239DAD?logo=typst&logoColor=white)
 
 <img src="portfolioCV/static/portfolioCV/img/PortFolioCreatorIMG.webp" alt="Captura de Portfolio Creator" width="850">
 
@@ -81,6 +82,8 @@ Para pasar los tests: `DJANGO_DEBUG=True python manage.py test`
 
 La app está desplegada en [creator.danimh.dev](https://creator.danimh.dev), en un servidor de **AWS Lightsail** con **Docker**: **gunicorn** ejecuta Django y **Caddy** va delante como proxy inverso, con HTTPS automático.
 
+Los PDF se generan con **Typst** (paquete `typst` de Python), así que el contenedor no necesita navegador: las fuentes y el paquete de Markdown que usan las plantillas van dentro del repo, en `portfolioCV/typst/`.
+
 ### Variables de entorno
 
 | Variable | Para qué sirve | Por defecto |
@@ -126,19 +129,25 @@ Aplicación web orientada a extraer repositorios y documentos de plataformas ext
 | `/tokens/` | GET, POST | Configuración de tokens, URL de GitLab y proveedor de IA |
 | `/gitlab/` | GET | Repositorios de GitLab |
 | `/gitlab/<int:repo_id>/` | GET | Detalle de un repositorio GitLab |
+| `/gitlab/<int:repo_id>/cv/` | GET | PDF de un repositorio GitLab |
 | `/github/` | GET | Repositorios de GitHub |
 | `/github/<str:owner>/<str:repo_name>/` | GET | Detalle de un repositorio GitHub |
+| `/github/<str:owner>/<str:repo_name>/cv/` | GET | PDF de un repositorio GitHub |
 | `/huggingface/` | GET | Modelos, datasets y Spaces de Hugging Face |
 | `/huggingface/<str:tipo>/<str:owner>/<str:repo_name>/` | GET | Detalle de un modelo, dataset o Space |
+| `/huggingface/<str:tipo>/<str:owner>/<str:repo_name>/cv/` | GET | PDF de un modelo, dataset o Space |
 | `/openalex/` | GET | Buscador de publicaciones |
 | `/openalex/<str:work_id>/` | GET | Detalle de una publicación |
+| `/openalex/<str:work_id>/cv/` | GET | PDF de una publicación |
 | `/mi-cv/` | GET, POST | Panel del constructor de CV |
 | `/mi-cv/add/` | POST | Añadir elemento al CV |
 | `/mi-cv/add-ia/` | POST | Añadir resumen de IA al CV |
 | `/mi-cv/remove/` | POST | Quitar elemento del CV |
-| `/mi-cv/descargar/` | GET | Descargar el CV completo |
+| `/mi-cv/descargar/` | GET | Descargar el CV completo en PDF (o en HTML con `?format=html`) |
 | `/gemini/resumen/` | POST | Página de resumen con IA |
 | `/gemini/stream/` | POST | Streaming de IA (proveedor del usuario o LM Studio) |
+| `/privacidad/` | GET | Política de privacidad |
+| `/condiciones/` | GET | Condiciones de uso |
 | `/accounts/github/login/` | GET | OAuth GitHub (django-allauth) |
 | `/accounts/google/login/` | GET | OAuth Google (django-allauth) |
 | `/<str:recurso>/eliminar/` | POST | Eliminar un recurso (solo su dueño) |
