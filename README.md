@@ -28,7 +28,8 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 ## ✨ Características
 
 - 🦊 **Cualquier GitLab:** conecta `gitlab.com` o la instancia de tu universidad o empresa indicando su URL.
-- 🐙 **GitHub y GitLab:** lista tus repositorios, consulta su detalle (lenguajes, README) y añádelos a tu CV.
+- 🐙 **GitHub y GitLab:** lista tus repositorios, consulta su detalle (lenguajes con % y tamaño, README) y añádelos a tu CV.
+- 🏷️ **Logos de tecnologías:** cada lenguaje aparece con su logo y color oficial (Simple Icons, CC0) en las tarjetas, en el detalle, en el PDF y en el HTML, ajustado para leerse en modo claro y oscuro.
 - 📚 **OpenAlex:** busca publicaciones científicas y súmalas a tu portfolio.
 - 🤗 **Hugging Face:** lista tus modelos, datasets y Spaces (también los privados, con token) o busca los de cualquier usuario o por nombre, consulta su model card y añádelos a tu CV.
 - 🤖 **Resúmenes con IA, con tu propia API Key:** pega la clave de NVIDIA, OpenAI, Anthropic, Google Gemini, Groq, OpenRouter o xAI y el proveedor se detecta solo, con un modelo rápido por defecto. También funciona en local con LM Studio.
@@ -36,10 +37,13 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 - 🌗 **Modo claro y oscuro:** sigue el tema del dispositivo y se puede cambiar desde la barra superior.
 - 🪪 **Perfil personal:** foto (cualquier formato, incluido HEIC de iPhone, convertida automáticamente a WebP ligero), nombre, titular profesional (p. ej. "Arquitecta · Diseño sostenible"), contacto y un "Acerca de mí" en Markdown. Sirve para cualquier profesión, no solo para perfiles técnicos.
 - 📄 **Exportación:** descarga tu CV en PDF o como HTML autocontenido y responsive, ideal para GitHub Pages. El portfolio web muestra tu titular bajo tu nombre.
+- 🗂️ **Proyectos completos en el CV:** cada proyecto muestra periodo, lenguajes, estrellas, forks, licencia, web, temas y su resumen de IA (en publicaciones: revista, año, citas y DOI).
+- 💡 **Alertas de GitHub en el PDF:** los `> [!NOTE]`, `[!TIP]`, `[!WARNING]`... de los README se pintan con su icono y color, como en GitHub.
+- 🔗 **Vista previa al compartir:** imagen y descripción Open Graph cuando se comparte el enlace de la web.
 - ⚡ **PDF sin navegador:** los PDF se generan con **Typst** en unos 40 ms y con poca memoria, ideal para un servidor pequeño.
 - 🚦 **Preparado para muchos usuarios:** llamadas a las APIs en paralelo, caché en disco de datos, imágenes y PDFs ya generados, y límite de descargas por usuario.
 - 🔐 **Cuentas y login social:** registro/login clásico y OAuth con **GitHub** y **Google** (django-allauth).
-- 🧪 **Tests con mocks:** 71 pruebas que se ejecutan en segundos sin depender de internet.
+- 🧪 **Tests con mocks:** 72 pruebas que se ejecutan en segundos sin depender de internet.
 
 ## 👤 Datos
 
@@ -94,6 +98,17 @@ Los PDF se generan con **Typst** (paquete `typst` de Python), así que el conten
 - **SQLite en modo WAL** para que las lecturas no esperen a las escrituras.
 - **Swap:** `sudo bash scripts/crear_swap.sh` en el servidor crea 2 GB de swap como red de seguridad.
 
+### Actualizar el servidor
+
+`scripts/desplegar.sh` hace `git pull`, reconstruye y arranca los contenedores y limpia imágenes antiguas. Instalado una vez como comando:
+
+```bash
+chmod +x ~/despliegue/PortfolioCreator/scripts/desplegar.sh
+sudo ln -sf ~/despliegue/PortfolioCreator/scripts/desplegar.sh /usr/local/bin/update
+```
+
+Desde entonces, cada despliegue es escribir `update`.
+
 ### Variables de entorno
 
 | Variable | Para qué sirve | Por defecto |
@@ -126,7 +141,7 @@ Aplicación web orientada a extraer repositorios y documentos de plataformas ext
 - **Motor Generativo de IA (multiproveedor / LM Studio):** IA en la nube con la API Key de cada usuario, mediante el protocolo de `openai`. El proveedor se deduce del prefijo de la clave (`portfolioCV/ia.py`) y, al guardarla, se comprueba que el modelo existe. En NVIDIA se desactiva el razonamiento de los modelos que "piensan" para que el texto empiece a salir al momento. También funciona en local con LM Studio. Lee el código fuente o los metadatos científicos para redactar resúmenes profesionales en Markdown.
 - **Streaming de respuestas HTTP:** la redacción se transmite en vivo con generadores (`yield`) y `StreamingHttpResponse`, sin bloquear el servidor.
 - **Exportación multipropósito (PDF y HTML):** el CV se genera como PDF con plantillas de **Typst** (sin navegador, con las fuentes Inter y Noto Color Emoji incluidas en el repo para que salga igual en cualquier máquina) o como un HTML estático 100% responsive y autocontenido con plantillas de Django.
-- **Testing automatizado (mocks):** 71 pruebas unitarias (`tests.py`) sobre autenticación, formularios, modelos, Hugging Face, detección del proveedor de IA, páginas y permisos de recursos y seguridad del PDF, con `unittest.mock.patch` para simular las APIs externas y la IA.
+- **Testing automatizado (mocks):** 72 pruebas unitarias (`tests.py`) sobre autenticación, formularios, modelos, Hugging Face, detección del proveedor de IA, páginas y permisos de recursos y seguridad del PDF, con `unittest.mock.patch` para simular las APIs externas y la IA.
 - **Modo oscuro:** variables CSS por tema, preferencia del sistema (`prefers-color-scheme`) y elección guardada en `localStorage`, aplicada antes de pintar para evitar parpadeos.
 - **PDF a prueba de inyecciones y SSRF:** los datos del usuario, los README y los textos de IA llegan a Typst como JSON, nunca como código, y el Markdown se renderiza sin poder ejecutar Typst. Typst no accede a la red: las imágenes del README las descarga antes Python, siguiendo cada redirección a mano y solo desde hosts públicos.
 - **Login social (OAuth 2.0):** inicio de sesión con un clic con **GitHub** y **Google**, con creación automática del perfil mediante signals.
