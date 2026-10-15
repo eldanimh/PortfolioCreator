@@ -52,6 +52,22 @@
 }
 #let emoji(e) = text(font: "Noto Color Emoji", e)  // Inter tiene su propio ❤ en negro
 
+// Etiqueta de un lenguaje con su logo y color oficial (Simple Icons): fondo tintado con el
+// color de la marca y texto/icono en una versión legible sobre claro (calculada en Python)
+#let badge-tec(nombre, icono: none, pct: none) = {
+  let etiqueta = if pct == none { nombre } else [#nombre #str(calc.round(float(pct))) %]
+  if icono == none { return badge(etiqueta) }
+  let marca = rgb(icono.color)
+  let svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='" + icono.claro + "' d='" + icono.path + "'/></svg>"
+  box(
+    fill: marca.lighten(88%), stroke: 0.75pt + marca.lighten(50%),
+    radius: 9pt, inset: (x: 5.5pt, y: 3pt), baseline: 3pt,
+    text(size: 8pt, weight: "semibold", fill: rgb(icono.claro))[
+      #box(image(bytes(svg), format: "svg", height: 0.95em), baseline: 0.12em)#h(3pt)#etiqueta
+    ],
+  )
+}
+
 #let colores-plataforma = (
   "GitHub": (rgb("#24292f"), white),
   "OpenAlex": (rgb("#f39c12"), white),
@@ -133,12 +149,13 @@
           if lenguajes.len() > 0 {
             for l in lenguajes.slice(0, calc.min(4, lenguajes.len())) {
               h(4pt)
-              badge[#l.name #str(calc.round(float(l.pct))) %]
+              badge-tec(l.name, icono: l.at("icono", default: none), pct: l.pct)
             }
             if lenguajes.len() > 4 { h(4pt); badge[+#(lenguajes.len() - 4)] }
           } else if hay("language") {
             h(4pt)
-            badge[💻 #dato("language")]
+            let icono = item.at("lenguaje_icono", default: none)
+            if icono == none { badge[💻 #dato("language")] } else { badge-tec(dato("language"), icono: icono) }
           }
           if cifras.len() > 0 {
             h(8pt)

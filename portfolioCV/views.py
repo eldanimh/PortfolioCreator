@@ -23,6 +23,7 @@ from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formulari
 from .seguridad import url_externa_segura  # Anti-SSRF en las URLs que indica el usuario
 from . import pdf  # PDFs con Typst (sin navegador)
 from . import imagenes  # Foto de perfil → WebP pequeño
+from . import tecnologias  # Logos y colores de los lenguajes (Simple Icons)
 from .descargas import limitar_descargas, cachear_descarga, respuesta_desde_cache, guardar_respuesta
 from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
 from . import huggingface as hf  # Modelos, datasets y Spaces de Hugging Face
@@ -1136,6 +1137,7 @@ def descargar_cv_completo(request):
             if item.get('platform') == 'IA Summary':
                 item['content_html'] = markdown.markdown(item.get('content', ''), extensions=['fenced_code', 'tables'])
 
+        data['items'] = tecnologias.con_iconos(data['items'])  # logos y colores de los lenguajes
         context = {'user': request.user, 'cv': data}
         html_string = render_to_string('portfolioCV/cv_web_portfolio_template.html', context)
         response = HttpResponse(html_string, content_type='text/html; charset=utf-8')

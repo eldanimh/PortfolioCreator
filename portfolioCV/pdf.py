@@ -28,6 +28,7 @@ import requests
 import typst
 from django.core.cache import cache
 
+from . import tecnologias
 from .seguridad import recurso_publico, MAX_REDIRECCIONES
 
 CARPETA_TYPST = os.path.join(os.path.dirname(__file__), 'typst')
@@ -267,6 +268,7 @@ def cv_profesional(user, cv_data):
     # Los resúmenes de la IA a veces copian alertas de GitHub del README
     info['about'] = _alertas_github(info.get('about') or '')
     datos['items'] = [{**i, 'content': _alertas_github(i['content'])} if i.get('content') else i for i in datos['items']]
+    datos['items'] = tecnologias.con_iconos(datos['items'])  # logos y colores de los lenguajes
     ficheros = {}
     # La foto es un data URI en base64: solo imágenes, nunca una URL externa
     if foto.startswith('data:image/') and ';base64,' in foto:

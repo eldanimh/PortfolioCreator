@@ -888,3 +888,31 @@ class AlertasGitHubTests(TestCase):
         self.assertIn('modo ahorro de batería', texto)
         self.assertNotIn('[!NOTE]', texto)
 
+
+class LogosTecnologiasTests(TestCase):
+    """Lenguajes con logo y color oficial (Simple Icons), legibles en claro y en oscuro"""
+
+    def test_icono_y_contraste(self):
+        from .tecnologias import icono, _luminancia, _rgb
+        python = icono('Python')
+        self.assertEqual(python['color'], '#3776AB')
+        self.assertTrue(python['path'].startswith('M'))
+        js = icono('JavaScript')  # amarillo: el texto se oscurece para leerse sobre claro
+        self.assertLessEqual(_luminancia(_rgb(js['claro'])), 0.18)
+        rust = icono('rust')      # negro: se aclara para leerse sobre oscuro
+        self.assertGreaterEqual(_luminancia(_rgb(rust['oscuro'])), 0.30)
+        self.assertEqual(icono('Java')['color'], '#ED8B00')
+        self.assertIsNone(icono('Makefile'))
+        self.assertIsNone(icono(''))
+
+    def test_html_exportado_con_logos(self):
+        user = User.objects.create_user(username='logos', password='x')
+        self.client.login(username='logos', password='x')
+        items = [{'platform': 'GitHub', 'id': 'ana/web', 'name': 'web'}]
+        ContenidoData.objects.create(recurso='cv_profesional_logos', usuario='logos', contenido=json.dumps({'personal_info': {}, 'items': items}))
+        extra = {'lenguajes': [{'name': 'Python', 'pct': 80.0}, {'name': 'Makefile', 'pct': 20.0}]}
+        with patch('portfolioCV.views._datos_actualizados', return_value=extra):
+            html = self.client.get(reverse('descargar_cv_completo') + '?format=html').content.decode()
+        self.assertIn('--c: #3776AB', html)                 # Python con su color y logo
+        self.assertIn('<span class="tech">Makefile', html)   # sin logo: etiqueta normal
+

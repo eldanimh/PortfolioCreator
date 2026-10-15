@@ -326,9 +326,50 @@
             margin: -0.4rem 0 0.9rem;
         }
 
-        .project-langs strong {
+        /* Etiquetas de tecnologías: logo y color de la marca, fondo tintado */
+        .tech-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin: -0.4rem 0 0.9rem;
+        }
+
+        .tech {
+            --c: #64748b;
+            --claro: #475569;
+            --oscuro: #cbd5e1;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.78rem;
             font-weight: 600;
-            color: var(--text-main);
+            line-height: 1;
+            padding: 0.3rem 0.65rem;
+            border-radius: 9999px;
+            white-space: nowrap;
+            color: var(--claro);
+            background: color-mix(in srgb, var(--c) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+        }
+
+        .tech svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .tech small {
+            font-size: inherit;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tech {
+                color: var(--oscuro);
+                background: color-mix(in srgb, var(--c) 18%, transparent);
+            }
         }
 
         .project-stats span {
@@ -523,15 +564,25 @@
                                     {{ item.platform }}
                                 </span>
                                 {% if item.language and not item.lenguajes %}
-                                <span class="badge">{{ item.language }}</span>
+                                    {% if item.lenguaje_icono %}
+                                    <span class="tech" style="--c: {{ item.lenguaje_icono.color }}; --claro: {{ item.lenguaje_icono.claro }}; --oscuro: {{ item.lenguaje_icono.oscuro }};"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ item.lenguaje_icono.path }}"/></svg>{{ item.language }}</span>
+                                    {% else %}
+                                    <span class="badge">{{ item.language }}</span>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                             {% if item.lenguajes %}
-                            {# En una línea: con etiquetas, 4 lenguajes ocupaban 3 filas de la tarjeta #}
-                            <p class="project-stats project-langs">
-                                {% for l in item.lenguajes|slice:":4" %}<span><strong>{{ l.name }}</strong> {{ l.pct|floatformat:"0" }}&nbsp;%</span> {% endfor %}
-                                {% if item.lenguajes|length > 4 %}<span>+{{ item.lenguajes|length|add:"-4" }}</span>{% endif %}
-                            </p>
+                            {# Lenguajes con su logo y color oficial (Simple Icons) #}
+                            <div class="tech-container">
+                                {% for l in item.lenguajes|slice:":4" %}
+                                    {% if l.icono %}
+                                    <span class="tech" style="--c: {{ l.icono.color }}; --claro: {{ l.icono.claro }}; --oscuro: {{ l.icono.oscuro }};"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ l.icono.path }}"/></svg>{{ l.name }} <small>{{ l.pct|floatformat:"0" }}&nbsp;%</small></span>
+                                    {% else %}
+                                    <span class="tech">{{ l.name }} <small>{{ l.pct|floatformat:"0" }}&nbsp;%</small></span>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if item.lenguajes|length > 4 %}<span class="tech">+{{ item.lenguajes|length|add:"-4" }}</span>{% endif %}
+                            </div>
                             {% endif %}
                             {% if item.estrellas or item.forks or item.likes or item.descargas or item.citas or item.licencia or item.revista %}
                             <p class="project-stats">
