@@ -33,7 +33,8 @@ Tu información profesional suele estar dispersa: código en GitHub, proyectos e
 - 🤖 **Resúmenes con IA, con tu propia API Key:** pega la clave de NVIDIA, OpenAI, Anthropic, Google Gemini, Groq, OpenRouter o xAI y el proveedor se detecta solo, con un modelo rápido por defecto. También funciona en local con LM Studio.
 - ⚡ **Streaming en vivo:** el texto de la IA aparece al instante, con efecto "máquina de escribir".
 - 🌗 **Modo claro y oscuro:** sigue el tema del dispositivo y se puede cambiar desde la barra superior.
-- 📄 **Exportación:** descarga tu CV en PDF o como HTML autocontenido y responsive, ideal para GitHub Pages.
+- 🪪 **Perfil personal:** foto, nombre, titular profesional (p. ej. "Arquitecta · Diseño sostenible"), contacto y un "Acerca de mí" en Markdown. Sirve para cualquier profesión, no solo para perfiles técnicos.
+- 📄 **Exportación:** descarga tu CV en PDF o como HTML autocontenido y responsive, ideal para GitHub Pages. El portfolio web muestra tu titular bajo tu nombre.
 - 🔐 **Cuentas y login social:** registro/login clásico y OAuth con **GitHub** y **Google** (django-allauth).
 - 🧪 **Tests con mocks:** 47 pruebas que se ejecutan en segundos sin depender de internet.
 

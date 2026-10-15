@@ -938,7 +938,7 @@ def _get_cv_data(user):
     
     # Estructura inicial obligatoria
     if 'personal_info' not in data:
-        data['personal_info'] = {'photo': '', 'name': '', 'linkedin': '', 'phone': '', 'email': '', 'about': ''}
+        data['personal_info'] = {'photo': '', 'name': '', 'headline': '', 'linkedin': '', 'phone': '', 'email': '', 'about': ''}
     if 'items' not in data:
         data['items'] = []
         
@@ -963,6 +963,7 @@ def cv_builder(request):
         
         # Guarda los textos
         data['personal_info']['name'] = request.POST.get('name', '').strip()
+        data['personal_info']['headline'] = request.POST.get('headline', '').strip()
         data['personal_info']['linkedin'] = request.POST.get('linkedin', '').strip()
         data['personal_info']['phone'] = request.POST.get('phone', '').strip()
         data['personal_info']['email'] = request.POST.get('email', '').strip()

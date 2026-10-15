@@ -420,6 +420,11 @@
                 display: none; /* Can be expanded to a mobile menu if needed */
             }
         }
+        .hero p.hero-headline {
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -439,7 +444,8 @@
             <div class="hero-content">
                 <span class="hero-greeting">Hola, soy</span>
                 <h1>{{ cv.personal_info.name|default:user.username|title }}</h1>
-                <p>Ingeniero de Software & Desarrollador. Bienvenido a mi portfolio digital donde agrupo mis proyectos más destacados, investigaciones y análisis arquitectónicos impulsados por Inteligencia Artificial.</p>
+                {% if cv.personal_info.headline %}<p class="hero-headline">{{ cv.personal_info.headline }}</p>{% endif %}
+                <p>Bienvenido a mi portfolio digital, donde reúno mis proyectos, trabajos y publicaciones más destacados.</p>
             </div>
             {% if cv.personal_info.photo %}
             <img src="{{ cv.personal_info.photo }}" alt="Foto de perfil" class="hero-image">

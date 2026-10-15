@@ -31,6 +31,11 @@
                 <input type="text" name="name" value="{{ cv_data.personal_info.name|default:'' }}" class="form-input" placeholder="Tu nombre para el CV">
             </div>
             <div class="form-group">
+                <label class="form-label">Titular (Opcional)</label>
+                <input type="text" name="headline" value="{{ cv_data.personal_info.headline|default:'' }}" class="form-input" maxlength="200" placeholder="Ej: Ingeniera de Software, Arquitecto, Investigadora en Biología...">
+                <small style="color: #57606a;">Aparece bajo tu nombre en el portfolio web exportado.</small>
+            </div>
+            <div class="form-group">
                 <label class="form-label">LinkedIn (Opcional)</label>
                 <input type="text" name="linkedin" value="{{ cv_data.personal_info.linkedin }}" class="form-input" placeholder="linkedin.com/in/usuario">
             </div>
