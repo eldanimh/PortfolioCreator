@@ -39,6 +39,19 @@
   text(size: 8pt, weight: "medium", fill: color, cuerpo),
 )
 
+// 1520 → "1.520" (separador de miles en español)
+#let miles(n) = {
+  let cifras = str(n)
+  let grupos = ()
+  while cifras.len() > 3 {
+    grupos.insert(0, cifras.slice(cifras.len() - 3))
+    cifras = cifras.slice(0, cifras.len() - 3)
+  }
+  grupos.insert(0, cifras)
+  grupos.join(".")
+}
+#let emoji(e) = text(font: "Noto Color Emoji", e)  // Inter tiene su propio ❤ en negro
+
 #let colores-plataforma = (
   "GitHub": (rgb("#24292f"), white),
   "OpenAlex": (rgb("#f39c12"), white),
@@ -92,29 +105,65 @@
   for item in d.items {
     let plataforma = item.at("platform", default: "")
     let (fondo, color) = colores-plataforma.at(plataforma, default: (rgb("#fc6d26"), white))
+    let dato(clave) = item.at(clave, default: none)
+    let hay(clave) = dato(clave) not in (none, "", 0, ())
     block(below: 20pt, {
-      // Título, etiquetas y descripción van juntos y pegados a lo que sigue (sin huérfanos)
+      // Título, etiquetas, descripción y enlaces van juntos y pegados a lo que sigue (sin huérfanos)
       block(breakable: false, sticky: true, below: 8pt, {
-      grid(
-        columns: (auto, 1fr),
-        column-gutter: 8pt,
-        text(size: 13pt, weight: "semibold", str(item.at("name", default: ""))),
-        if item.at("url", default: "") != "" {
-          align(right, link(item.url, text(size: 9pt, fill: primary, item.url)))
-        },
-      )
-      v(-1pt)
-      text(size: 9pt, fill: text-muted, {
-        badge(plataforma, fondo: fondo, color: color, borde: none)
-        if item.at("language", default: none) not in (none, "") {
-          h(4pt)
-          badge[💻 #item.language]
+        grid(
+          columns: (1fr, auto),
+          column-gutter: 10pt,
+          align: (left + bottom, right + bottom),
+          text(size: 13pt, weight: "semibold", str(item.at("name", default: ""))),
+          if hay("periodo") { text(size: 9pt, fill: text-muted, str(dato("periodo"))) },
+        )
+        v(-1pt)
+        // Etiquetas: plataforma, lenguajes con % (o el principal) y cifras
+        let cifras = ()
+        if hay("estrellas") { cifras.push[#emoji("⭐") #miles(dato("estrellas"))] }
+        if hay("forks") { cifras.push[#miles(dato("forks")) forks] }
+        if hay("likes") { cifras.push[#emoji("❤️") #miles(dato("likes"))] }
+        if hay("descargas") { cifras.push[#miles(dato("descargas")) descargas] }
+        if hay("citas") { cifras.push[#miles(dato("citas")) citas] }
+        if hay("licencia") { cifras.push(str(dato("licencia"))) }
+        if hay("revista") { cifras.push(emph(str(dato("revista")))) }
+        text(size: 9pt, fill: text-muted, {
+          badge(plataforma, fondo: fondo, color: color, borde: none)
+          let lenguajes = item.at("lenguajes", default: ())
+          if lenguajes.len() > 0 {
+            for l in lenguajes.slice(0, calc.min(4, lenguajes.len())) {
+              h(4pt)
+              badge[#l.name #str(calc.round(float(l.pct))) %]
+            }
+            if lenguajes.len() > 4 { h(4pt); badge[+#(lenguajes.len() - 4)] }
+          } else if hay("language") {
+            h(4pt)
+            badge[💻 #dato("language")]
+          }
+          if cifras.len() > 0 {
+            h(8pt)
+            cifras.join([ · ])
+          }
+        })
+        if hay("description") {
+          v(-2pt)
+          text(size: 10pt, str(dato("description")))
         }
-      })
-      if item.at("description", default: none) not in (none, "") {
-        v(-2pt)
-        text(size: 10pt, str(item.description))
-      }
+        // Enlaces visibles también en papel: sin "https://", la web en vivo primero
+        let corta(url) = url.replace(regex("^https?://(www\\.)?"), "").trim("/", at: end)
+        let enlaces = ()
+        if hay("homepage") { enlaces.push(link(dato("homepage"))[🌐 #corta(dato("homepage"))]) }
+        if hay("url") { enlaces.push(link(dato("url"))[🔗 #corta(dato("url"))]) }
+        if hay("doi") { enlaces.push(link(dato("doi"))[📄 #corta(dato("doi"))]) }
+        if enlaces.len() > 0 {
+          v(-4pt)
+          text(size: 9pt, fill: primary, enlaces.join(h(12pt)))
+        }
+        let topics = item.at("topics", default: ())
+        if topics.len() > 0 {
+          v(-4pt)
+          text(size: 8.5pt, fill: text-muted, topics.map(t => "#" + str(t)).join("  "))
+        }
       })
       if plataforma == "IA Summary" and item.at("content", default: "") != "" {
         block(width: 100%, fill: bg-muted, inset: 7.5pt, radius: 4.5pt, stroke: 0.75pt + border-c,

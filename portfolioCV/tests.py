@@ -824,3 +824,47 @@ class VistaPreviaCompartirTests(TestCase):
         self.assertContains(response, 'content="https://testserver/static/portfolioCV/img/og-image.jpg?v=1"')
         self.assertContains(response, '<meta name="twitter:card" content="summary_large_image">', html=True)
 
+
+class ProyectosEnriquecidosTests(TestCase):
+    """Los proyectos del CV llevan web en vivo, lenguajes con %, topics, fechas y cifras"""
+
+    def test_ayudantes(self):
+        from .views import _periodo, _url_web, _porcentajes
+        self.assertEqual(_periodo('2024-03-01T10:00:00Z', '2026-10-14T10:00:00Z'), '2024 – oct 2026')
+        self.assertEqual(_periodo('2026-03-01T10:00:00Z', '2026-10-14T10:00:00Z'), 'oct 2026')
+        self.assertEqual(_periodo(None, ''), '')
+        self.assertEqual(_url_web('danimh.dev'), 'https://danimh.dev')
+        self.assertEqual(_url_web('https://danimh.dev/'), 'https://danimh.dev/')
+        for peligrosa in ['javascript:alert(1)', 'data:text/html,x', 'file:///etc/passwd', '']:
+            self.assertEqual(_url_web(peligrosa), '')
+        self.assertEqual(_porcentajes({'CSS': 650, 'Astro': 43348}), [{'name': 'Astro', 'pct': 98.5}, {'name': 'CSS', 'pct': 1.5}])
+        self.assertEqual(_porcentajes({'Python': 65.2, 'Shell': 34.8})[0], {'name': 'Python', 'pct': 65.2})
+
+    def test_github_datos_completos(self):
+        from unittest.mock import MagicMock
+        from .views import _datos_actualizados
+        def respuesta(url, **kwargs):
+            r = MagicMock(status_code=200)
+            r.json.return_value = {'Astro': 43348, 'CSS': 650} if url.endswith('/languages') else {
+                'description': 'Mi web', 'html_url': 'https://github.com/ana/web', 'language': 'Astro',
+                'homepage': 'ana.dev', 'topics': ['astro', 'aws'], 'stargazers_count': 12, 'forks_count': 2,
+                'license': {'spdx_id': 'MIT'}, 'created_at': '2024-01-05T00:00:00Z', 'pushed_at': '2026-10-01T00:00:00Z'}
+            return r
+        profile = UserProfile.objects.get(user=User.objects.create_user(username='rico', password='x'))
+        with patch('portfolioCV.views.requests.get', side_effect=respuesta):
+            datos = _datos_actualizados(profile, {'platform': 'GitHub', 'id': 'ana/web'})
+        self.assertEqual(datos['homepage'], 'https://ana.dev')
+        self.assertEqual(datos['lenguajes'][0], {'name': 'Astro', 'pct': 98.5})
+        self.assertEqual((datos['topics'], datos['estrellas'], datos['licencia'], datos['periodo']),
+                         (['astro', 'aws'], 12, 'MIT', '2024 – oct 2026'))
+
+    def test_pdf_muestra_los_datos(self):
+        from . import pdf
+        cv = {'personal_info': {'name': 'Ana'}, 'items': [{
+            'platform': 'GitHub', 'id': 'ana/web', 'name': 'web', 'url': 'https://github.com/ana/web',
+            'homepage': 'https://ana.dev', 'topics': ['astro'], 'lenguajes': [{'name': 'Astro', 'pct': 85.3}],
+            'estrellas': 1520, 'licencia': 'MIT', 'periodo': '2024 – oct 2026'}]}
+        texto = _texto_pdf(pdf.cv_profesional(User(username='ana'), cv))
+        for esperado in ['ana.dev', 'github.com/ana/web', '#astro', 'Astro 85 %', '1.520', 'MIT', '2024 – oct 2026']:
+            self.assertIn(esperado, texto)
+

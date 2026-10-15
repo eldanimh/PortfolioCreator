@@ -975,28 +975,95 @@ def eliminar_del_cv(request):
             
     return redirect('cv_builder')
 
+MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+
+def _periodo(inicio, fin):
+    """Fechas ISO de creación y última actividad → '2024 – oct 2026' (o 'oct 2026' si coinciden)."""
+    try:
+        a_ini, a_fin, mes = int(inicio[:4]), int(fin[:4]), int(fin[5:7])
+    except (TypeError, ValueError, IndexError):
+        return ''
+    final = f"{MESES[mes - 1]} {a_fin}" if 1 <= mes <= 12 else str(a_fin)
+    return final if a_ini == a_fin else f"{a_ini} – {final}"
+
+
+def _url_web(url):
+    """Solo enlaces http(s); 'danimh.dev' → 'https://danimh.dev'. Nada de javascript: ni similares."""
+    url = (url or '').strip()
+    if not url or ' ' in url:
+        return ''
+    if url.startswith(('http://', 'https://')):
+        return url
+    return '' if ':' in url.split('/')[0] else 'https://' + url
+
+
+def _porcentajes(languages):
+    """{'Astro': 43348, ...} (bytes de GitHub) o {'Python': 65.2} (% de GitLab) → [{'name', 'pct'}] de mayor a menor."""
+    if not isinstance(languages, dict) or not languages:
+        return []
+    total = sum(v for v in languages.values() if isinstance(v, (int, float)))
+    if total <= 0:
+        return []
+    en_bytes = total > 101
+    return [{'name': nombre, 'pct': round(valor / total * 100 if en_bytes else valor, 1)}
+            for nombre, valor in sorted(languages.items(), key=lambda kv: kv[1], reverse=True)
+            if isinstance(valor, (int, float))]
+
+
 def _datos_actualizados(profile, item):
-    """Descripción, URL y lenguaje al día de un ítem del CV, pidiéndolos a su API ({} si no hay)."""
+    """
+    Datos al día de un ítem del CV pidiéndolos a su API ({} si no hay): descripción, URL,
+    y lo que hace que un proyecto luzca en el CV: web en vivo, lenguajes con %, topics,
+    fechas, estrellas, licencia; o año, revista y citas si es una publicación.
+    """
     if item['platform'] == 'GitHub':
         headers = {"Authorization": f"Bearer {profile.github_token}", "Accept": "application/vnd.github.v3+json"}
         resp = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}", headers=headers, timeout=5)
         if resp.status_code == 200:
             rdata = resp.json()
-            return {'description': rdata.get('description', ''), 'url': rdata.get('html_url', ''), 'language': rdata.get('language', '')}
+            resp_lang = requests.get(f"{GITHUB_API_URL}/repos/{item['id']}/languages", headers=headers, timeout=5)
+            licencia = (rdata.get('license') or {}).get('spdx_id') or ''
+            return {
+                'description': rdata.get('description') or '', 'url': rdata.get('html_url', ''),
+                'language': rdata.get('language') or '',
+                'homepage': _url_web(rdata.get('homepage')),
+                'topics': (rdata.get('topics') or [])[:8],
+                'lenguajes': _porcentajes(resp_lang.json()) if resp_lang.status_code == 200 else [],
+                'estrellas': rdata.get('stargazers_count') or 0, 'forks': rdata.get('forks_count') or 0,
+                'licencia': '' if licencia == 'NOASSERTION' else licencia,
+                'periodo': _periodo(rdata.get('created_at'), rdata.get('pushed_at')),
+            }
 
     elif item['platform'] == 'GitLab':
         headers = {"PRIVATE-TOKEN": profile.gitlab_token}
-        resp = requests.get(f"{gitlab_api_url(profile)}/projects/{item['id']}", headers=headers, timeout=5, allow_redirects=False)
+        base = f"{gitlab_api_url(profile)}/projects/{item['id']}"
+        resp = requests.get(base, headers=headers, params={'license': 'true'}, timeout=5, allow_redirects=False)
         if resp.status_code == 200:
             rdata = resp.json()
-            return {'description': rdata.get('description', ''), 'url': rdata.get('web_url', '')}
+            resp_lang = requests.get(f"{base}/languages", headers=headers, timeout=5, allow_redirects=False)
+            return {
+                'description': rdata.get('description') or '', 'url': rdata.get('web_url', ''),
+                'topics': (rdata.get('topics') or rdata.get('tag_list') or [])[:8],
+                'lenguajes': _porcentajes(resp_lang.json()) if resp_lang.status_code == 200 else [],
+                'estrellas': rdata.get('star_count') or 0, 'forks': rdata.get('forks_count') or 0,
+                'licencia': (rdata.get('license') or {}).get('nickname') or (rdata.get('license') or {}).get('name') or '',
+                'periodo': _periodo(rdata.get('created_at'), rdata.get('last_activity_at')),
+            }
 
     elif item['platform'] == 'Hugging Face':
         tipo, _, repo_id = item['id'].partition('/')
         if tipo in hf.TIPOS:
             rdata = hf.detalle_repo(profile, tipo, repo_id)
             if rdata:
-                return {'description': rdata['description'], 'url': rdata['html_url'], 'language': rdata['tarea'] or rdata['hf_tipo_label']}
+                return {
+                    'description': rdata['description'], 'url': rdata['html_url'],
+                    'language': rdata['tarea'] or rdata['hf_tipo_label'],
+                    'topics': rdata.get('tags', [])[:8],
+                    'likes': rdata.get('likes') or 0, 'descargas': rdata.get('downloads') or 0,
+                    'licencia': rdata.get('licencia') or '',
+                    'periodo': _periodo(rdata.get('created_at'), rdata.get('updated_at')),
+                }
 
     elif item['platform'] == 'OpenAlex':
         params = {}
@@ -1006,7 +1073,13 @@ def _datos_actualizados(profile, item):
         if resp.status_code == 200:
             wdata = resp.json()
             authors = ", ".join([a.get('author', {}).get('display_name', '') for a in wdata.get('authorships', [])])
-            return {'description': authors, 'url': wdata.get('id', ''), 'language': "Publicación OpenAlex"}
+            fuente = ((wdata.get('primary_location') or {}).get('source') or {}).get('display_name') or ''
+            return {
+                'description': authors, 'url': wdata.get('id', ''), 'language': '',  # la etiqueta OpenAlex ya lo dice
+                'revista': fuente, 'periodo': str(wdata.get('publication_year') or ''),
+                'citas': wdata.get('cited_by_count') or 0,
+                'doi': _url_web(wdata.get('doi')),
+            }
     return {}
 
 
@@ -1014,7 +1087,7 @@ def _enriquecer_item(profile, item):
     """El ítem con sus datos al día. Se guardan 15 min en caché para no repetir la llamada."""
     if item.get('platform') == 'IA Summary':
         return item  # texto propio, no hay API que consultar
-    clave = f"cv-item:{profile.user_id}:{item.get('platform')}:{item.get('id')}"
+    clave = f"cv-item-v2:{profile.user_id}:{item.get('platform')}:{item.get('id')}"  # v2: con lenguajes, topics, fechas...
     extra = cache.get(clave)
     if extra is None:
         try:

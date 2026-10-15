@@ -185,7 +185,9 @@
             transition: var(--transition);
             display: flex;
             flex-direction: column;
-            height: 380px;
+            /* Crece con su contenido (la fila se iguala sola); solo se pliega lo muy largo, como un resumen IA extenso */
+            min-height: 380px;
+            max-height: 540px;
             overflow: hidden;
             position: relative;
         }
@@ -311,6 +313,49 @@
         .badge.openalex { background-color: #f39c12; color: white; border-color: #f39c12; }
         .badge.ia { background-color: #2ea043; color: white; border-color: #2ea043; }
         .badge.huggingface { background-color: #ffd21e; color: #3a3b45; border-color: #ffd21e; }
+
+        .project-period {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: -0.35rem 0 0.6rem;
+        }
+
+        .project-stats {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: -0.4rem 0 0.9rem;
+        }
+
+        .project-langs strong {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .project-stats span {
+            white-space: nowrap;  /* "TypeScript 10 %" nunca partido en dos líneas */
+        }
+
+        .project-stats span + span::before {
+            content: "·";  /* separador solo entre los datos que existen */
+            margin: 0 0.4em;
+        }
+
+        .project-topics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: -0.75rem 0 1rem;
+        }
+
+        .project-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1.25rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
 
         .project-desc {
             color: var(--text-muted);
@@ -472,14 +517,33 @@
                     <article class="project-card">
                         <div class="project-header">
                             <h3 class="project-title">{{ item.name }}</h3>
+                            {% if item.periodo %}<p class="project-period">{{ item.periodo }}</p>{% endif %}
                             <div class="badge-container">
                                 <span class="badge {% if item.platform == 'GitHub' %}github{% elif item.platform == 'GitLab' %}gitlab{% elif item.platform == 'OpenAlex' %}openalex{% elif item.platform == 'Hugging Face' %}huggingface{% elif item.platform == 'IA Summary' %}ia{% endif %}">
                                     {{ item.platform }}
                                 </span>
-                                {% if item.language %}
+                                {% if item.language and not item.lenguajes %}
                                 <span class="badge">{{ item.language }}</span>
                                 {% endif %}
                             </div>
+                            {% if item.lenguajes %}
+                            {# En una línea: con etiquetas, 4 lenguajes ocupaban 3 filas de la tarjeta #}
+                            <p class="project-stats project-langs">
+                                {% for l in item.lenguajes|slice:":4" %}<span><strong>{{ l.name }}</strong> {{ l.pct|floatformat:"0" }}&nbsp;%</span> {% endfor %}
+                                {% if item.lenguajes|length > 4 %}<span>+{{ item.lenguajes|length|add:"-4" }}</span>{% endif %}
+                            </p>
+                            {% endif %}
+                            {% if item.estrellas or item.forks or item.likes or item.descargas or item.citas or item.licencia or item.revista %}
+                            <p class="project-stats">
+                                {% if item.estrellas %}<span>⭐ {{ item.estrellas|floatformat:"0g" }}</span>{% endif %}
+                                {% if item.forks %}<span>{{ item.forks|floatformat:"0g" }} forks</span>{% endif %}
+                                {% if item.likes %}<span>❤️ {{ item.likes|floatformat:"0g" }}</span>{% endif %}
+                                {% if item.descargas %}<span>{{ item.descargas|floatformat:"0g" }} descargas</span>{% endif %}
+                                {% if item.citas %}<span>{{ item.citas|floatformat:"0g" }} citas</span>{% endif %}
+                                {% if item.licencia %}<span>{{ item.licencia }}</span>{% endif %}
+                                {% if item.revista %}<span><em>{{ item.revista }}</em></span>{% endif %}
+                            </p>
+                            {% endif %}
                         </div>
                         
                         {% if item.description %}
@@ -492,9 +556,15 @@
                         </div>
                         {% endif %}
 
-                        {% if item.url %}
-                        <div class="project-link-container" style="margin-top: auto; padding-top: 1rem;">
-                            <a href="{{ item.url }}" target="_blank" style="font-weight: 500; font-size: 0.9rem;">Ver Proyecto →</a>
+                        {% if item.topics %}
+                        <div class="project-topics">{% for t in item.topics|slice:":5" %}<span>#{{ t }}</span>{% endfor %}</div>
+                        {% endif %}
+
+                        {% if item.url or item.homepage or item.doi %}
+                        <div class="project-link-container project-links" style="margin-top: auto; padding-top: 1rem;">
+                            {% if item.homepage %}<a href="{{ item.homepage }}" target="_blank" rel="noopener noreferrer">🌐 Ver web en vivo ↗</a>{% endif %}
+                            {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Ver Proyecto →</a>{% endif %}
+                            {% if item.doi %}<a href="{{ item.doi }}" target="_blank" rel="noopener noreferrer">📄 DOI</a>{% endif %}
                         </div>
                         {% endif %}
                     </article>
