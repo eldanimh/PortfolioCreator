@@ -19,6 +19,20 @@
   align(center, cuerpo)
 } else { cuerpo }
 
+// Imagen del Markdown como en el navegador: en <img width="850"> los números son px
+// (cmarker los pasa como pt; 1px = 0,75pt) y nunca más ancha que el espacio disponible.
+#let imagen-md(ruta, alt: none, width: auto, height: auto, ..args) = {
+  let px(v) = if type(v) == length { v * 0.75 } else { v }
+  let (ancho, alto) = (px(width), px(height))
+  box(layout(espacio => {
+    let (w, h) = (ancho, alto)
+    if type(w) == length and w.to-absolute() > espacio.width {
+      (w, h) = (100%, auto)  // se reduce al ancho disponible manteniendo la proporción
+    }
+    image(ruta, alt: alt, width: w, height: h, ..args)
+  }))
+}
+
 #let md(texto, imagenes: (:)) = cmarker.render(
   texto,
   raw-typst: false,
@@ -27,7 +41,7 @@
   html: (p: (attrs, cuerpo) => block(alineado(attrs, cuerpo)), div: (attrs, cuerpo) => alineado(attrs, cuerpo)),
   scope: (image: (source, alt: none, ..args) => {
     // box: en línea, como en GitHub (varios badges seguidos en la misma fila)
-    if source in imagenes { box(image(imagenes.at(source), alt: alt, ..args)) }
+    if source in imagenes { imagen-md(imagenes.at(source), alt: alt, ..args) }
   }),
 )
 
