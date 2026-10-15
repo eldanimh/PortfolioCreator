@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 
 def _host_publico(hostname, port):
@@ -47,33 +47,3 @@ def recurso_publico(url):
 
 
 MAX_REDIRECCIONES = 5
-
-
-def pagina_pdf_segura(browser):
-    """
-    Página de Playwright para convertir HTML a PDF sin riesgos: el HTML incluye el README
-    de cualquier repositorio público, que puede traer <script>, <iframe> o imágenes que
-    apunten a direcciones internas del servidor (p. ej. los metadatos de AWS).
-    - JavaScript desactivado.
-    - Cada petición (y cada redirección) solo sale si va a un host público.
-    """
-    page = browser.new_page(java_script_enabled=False)
-
-    def filtrar(route):
-        url = route.request.url
-        for _ in range(MAX_REDIRECCIONES + 1):
-            if not recurso_publico(url):
-                return route.abort()
-            try:
-                # max_redirects=0: las redirecciones se siguen a mano para revisar cada salto
-                respuesta = route.fetch(url=url, max_redirects=0, timeout=10000)
-            except Exception:
-                return route.abort()
-            if 300 <= respuesta.status < 400 and respuesta.headers.get("location"):
-                url = urljoin(url, respuesta.headers["location"])
-                continue
-            return route.fulfill(response=respuesta)
-        return route.abort()
-
-    page.route("**/*", filtrar)
-    return page

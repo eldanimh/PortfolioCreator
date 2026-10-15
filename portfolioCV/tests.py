@@ -416,18 +416,64 @@ class DetalleRecursoTests(TestCase):
         self.assertFalse(ContenidoData.objects.filter(recurso='nota').exists())
 
 
-class ReadmePDFTests(TestCase):
-    """El README se convierte bien a HTML para el PDF"""
+def _texto_pdf(contenido):
+    """Texto de todas las páginas de un PDF (para comprobar qué se ha pintado)."""
+    import io
+    from pypdf import PdfReader
+    return '\n'.join(pagina.extract_text() for pagina in PdfReader(io.BytesIO(contenido)).pages)
+
+
+class PDFTypstTests(TestCase):
+    """Los PDF se generan con Typst sin que los datos del usuario puedan inyectar código"""
+
+    def setUp(self):
+        self.user = User(username='ana')
 
     def test_markdown_dentro_de_div_y_rutas_relativas(self):
-        from .views import _readme_a_html
+        from . import pdf
         readme = '<div align="center">\n\n# Título\n\n**negrita** ![logo](img/logo.png)\n\n</div>\n\nTexto [enlace](https://example.com)'
-        repo = {'full_name': 'ana/proyecto', 'default_branch': 'main'}
-        html = _readme_a_html(readme, repo, 'GitHub')
-        self.assertIn('<h1>Título</h1>', html)
-        self.assertIn('<strong>negrita</strong>', html)
-        self.assertIn('src="https://raw.githubusercontent.com/ana/proyecto/main/img/logo.png"', html)
-        self.assertNotIn('**', html)
+        repo = {'name': 'proyecto', 'full_name': 'ana/proyecto', 'default_branch': 'main'}
+        with patch('portfolioCV.pdf._descargar_imagen', return_value=None) as mock_descarga:
+            texto = _texto_pdf(pdf.cv_repo(self.user, repo, [{'name': 'Python', 'pct': 80}], ['README.md'], readme, 'GitHub'))
+        self.assertEqual(mock_descarga.call_args.args[0], 'https://raw.githubusercontent.com/ana/proyecto/main/img/logo.png')
+        self.assertIn('Título', texto)
+        self.assertIn('negrita', texto)
+        self.assertIn('Python: 80', texto)
+        self.assertNotIn('**', texto)
+
+    def test_datos_del_usuario_no_se_ejecutan_como_typst(self):
+        from . import pdf
+        cv = {'personal_info': {'name': '#panic("nombre") $x$', 'about': '<!--raw-typst #panic("about") -->Hola'},
+              'items': [{'id': 1, 'name': '#panic("item")', 'platform': 'IA Summary',
+                         'content': '<!--raw-typst #panic("ia") -->\n#read("main.typ")'}]}
+        texto = _texto_pdf(pdf.cv_profesional(self.user, cv))  # con raw-typst activo, panic() rompería el PDF
+        self.assertIn('#panic("nombre") $x$', texto)
+        self.assertIn('#panic("item")', texto)
+        self.assertIn('#read(', texto)  # el Markdown pone comillas tipográficas: #read(“main.typ”)
+
+    def test_cv_profesional_con_foto(self):
+        import base64
+        from . import pdf
+        png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==')
+        cv = {'personal_info': {'name': 'Ana', 'photo': 'data:image/png;base64,' + base64.b64encode(png).decode()}, 'items': []}
+        self.assertTrue(pdf.cv_profesional(self.user, cv).startswith(b'%PDF'))
+
+    def test_imagenes_internas_no_se_descargan(self):
+        from . import pdf
+        import time
+        with patch('portfolioCV.pdf.requests.get') as mock_get:
+            self.assertIsNone(pdf._descargar_imagen('http://169.254.169.254/latest/meta-data/', time.monotonic() + 5))
+        mock_get.assert_not_called()
+
+    def test_redireccion_a_direccion_interna_bloqueada(self):
+        from . import pdf
+        import time
+        from unittest.mock import MagicMock
+        redireccion = MagicMock(is_redirect=True, headers={'location': 'http://127.0.0.1/secreto.png'})
+        redireccion.__enter__.return_value = redireccion
+        with patch('portfolioCV.pdf.requests.get', return_value=redireccion) as mock_get:
+            self.assertIsNone(pdf._descargar_imagen('https://8.8.8.8/logo.png', time.monotonic() + 5))
+        self.assertEqual(mock_get.call_count, 1)  # no llega a pedir la dirección interna
 
 
 class RecursoPublicoTests(TestCase):
@@ -591,8 +637,10 @@ class HuggingFaceTests(TestCase):
         self.assertEqual(hf.usuario_hf(self.profile), 'ana')
         self.assertEqual(mock_get.call_args.kwargs['headers'], {'Authorization': 'Bearer hf_x'})
 
-    def test_imagenes_del_readme_en_el_pdf(self):
-        from .views import _readme_a_html
+    @patch('portfolioCV.pdf._descargar_imagen', return_value=b'\x89PNG\r\n\x1a\n...')
+    def test_imagenes_del_readme_en_el_pdf(self, mock_descarga):
+        from . import pdf
         repo = {'html_url': 'https://huggingface.co/datasets/ana/datos', 'default_branch': 'main'}
-        html = _readme_a_html('![grafica](img/g.png)', repo, 'Hugging Face')
-        self.assertIn('src="https://huggingface.co/datasets/ana/datos/resolve/main/img/g.png"', html)
+        mapa, ficheros = pdf._imagenes_readme('![grafica](img/g.png)', pdf._base_raw(repo, 'Hugging Face'))
+        self.assertEqual(mock_descarga.call_args.args[0], 'https://huggingface.co/datasets/ana/datos/resolve/main/img/g.png')
+        self.assertEqual(mapa, {'img/g.png': 'img0.png'})

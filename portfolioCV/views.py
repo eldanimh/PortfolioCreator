@@ -1,5 +1,5 @@
 # ─── IMPORTACIONES ─────────────────────────────────────────
-import io        # Módulo para manejar buffers de bytes en memoria (para generar PDFs)
+import logging   # Registro de errores (p. ej. si falla la generación de un PDF)
 import json      # Módulo para serializar/deserializar JSON (para el CV profesional)
 import requests  # Librería HTTP para hacer peticiones GET/POST a APIs externas (GitHub, GitLab, OpenAlex)
 from django.shortcuts import render, redirect, get_object_or_404  # Funciones de atajo de Django
@@ -19,10 +19,12 @@ from django.contrib import messages  # Sistema de mensajes flash (se muestran un
 from .models import UserProfile, ContenidoData  # Nuestros modelos de BD
 from .forms import RegistroForm, TokensForm, ContenidoForm  # Nuestros formularios
 from .seguridad import url_externa_segura  # Anti-SSRF en las URLs que indica el usuario
-from .pdf import html_a_pdf, ServidorOcupado  # HTML → PDF con Chromium, con límite de PDFs simultáneos
+from . import pdf  # PDFs con Typst (sin navegador)
 from .ia import configuracion_ia, comprobar_configuracion  # Proveedor de IA deducido de la API Key
 from . import huggingface as hf  # Modelos, datasets y Spaces de Hugging Face
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 # ─── URLs base de las APIs externas ────────────────────────
 GITLAB_DEFAULT_URL = "https://gitlab.com"  # Instancia por defecto si el usuario no indica otra
@@ -768,98 +770,10 @@ def _language_bars(languages):
     return bars
 
 
-def _readme_a_html(readme, repo, platform):
-    """
-    Convierte el README (Markdown) a HTML para el PDF.
-    - Muchos README envuelven la cabecera en <div align="center">: Markdown no procesa lo
-      que hay dentro de un bloque HTML, y los **, ![]() y [] salían tal cual. Con md_in_html
-      y markdown="1" en esos bloques, su contenido también se convierte.
-    - Las imágenes con ruta relativa (capturas del repo) se apuntan al fichero en bruto
-      del repositorio para que se vean en el PDF.
-    """
-    import re
-    import markdown
-
-    readme = re.sub(
-        r'<(div|section|details|summary|center|p)\b(?![^>]*\bmarkdown=)([^>]*)>',
-        r'<\1\2 markdown="1">',
-        readme,
-        flags=re.IGNORECASE,
-    )
-    html = markdown.markdown(
-        readme,
-        extensions=['extra', 'codehilite', 'tables', 'fenced_code', 'md_in_html'],  # 'extra' ya incluye md_in_html
-    )
-
-    rama = repo.get('default_branch') or 'main'
-    if platform == 'GitHub' and repo.get('full_name'):
-        base = f"https://raw.githubusercontent.com/{repo['full_name']}/{rama}/"
-    elif platform == 'GitLab' and repo.get('web_url'):
-        base = f"{repo['web_url'].rstrip('/')}/-/raw/{rama}/"
-    elif platform == 'Hugging Face' and repo.get('html_url'):
-        base = f"{repo['html_url'].rstrip('/')}/resolve/{rama}/"
-    else:
-        base = None
-    if base:
-        html = re.sub(
-            r'(<img\b[^>]*\bsrc=")(?!https?:|data:|//|#)\.?/?([^"]+)"',
-            lambda m: f'{m.group(1)}{base}{m.group(2)}"',
-            html,
-        )
-    return html
-
-
-def _respuesta_servidor_ocupado():
-    """Respuesta cuando ya se están generando demasiados PDFs a la vez."""
-    return HttpResponse(
-        "<h1>Servidor ocupado</h1><p>Se están generando otros PDFs ahora mismo. Inténtalo de nuevo en unos segundos.</p>",
-        status=503,
-    )
-
-
 def _generar_pdf(user, repo, languages, tree, readme, platform):
-    """Genera el PDF del CV/Portfolio usando Playwright para un renderizado HTML/CSS nativo tipo GitHub.
-    Recibe los datos unificados (da igual si vienen de GitHub o GitLab) y los renderiza en un PDF."""
-    from django.template.loader import render_to_string
-    import markdown
-    
-    try:
-        import playwright.sync_api  # noqa: F401 (solo comprobamos que está instalado)
-    except ImportError:
-        error_html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Error PDF</title>
-            <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-                .container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 40px; max-width: 600px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-                h1 { color: #ff7b72; margin-top: 0; }
-                p { line-height: 1.6; font-size: 16px; margin-bottom: 20px; }
-                .btn { display: inline-block; background-color: #238636; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; border: 1px solid rgba(240, 246, 252, 0.1); }
-                .btn:hover { background-color: #2ea043; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>⚠️ Generación de PDF no disponible</h1>
-                <p>No se pudo generar el PDF en este servidor.</p>
-                <p>Por favor, usa el creador de <strong>CV Unificado (El Carrito)</strong> y dale a la opción de descargar como <strong>HTML</strong>, o corre la aplicación en tu entorno local (Mac).</p>
-                <a href="javascript:history.back()" class="btn">Volver Atrás</a>
-            </div>
-        </body>
-        </html>
-        """
-        return HttpResponse(error_html, status=501)
-
-    buffer = io.BytesIO()  # Creamos un archivo temporal en la memoria RAM
-    
-    # 1. Preprocesar Markdown
-    # Convertimos el texto del README (Markdown) a código HTML para que el PDF lo entienda
-    readme_html = _readme_a_html(readme, repo, platform) if readme else ""
-    
-    # 2. Procesar lenguajes (calcular porcentajes)
+    """Genera el PDF de un repo u obra con Typst (sin navegador).
+    Recibe los datos unificados (da igual si vienen de GitHub, GitLab, Hugging Face u OpenAlex)."""
+    # Procesar lenguajes (calcular porcentajes)
     processed_languages = []
     if languages:
         total = sum(languages.values())  # Suma total de bytes/líneas de código
@@ -869,44 +783,16 @@ def _generar_pdf(user, repo, languages, tree, readme, platform):
             else:
                 pct = 0
             processed_languages.append({'name': lang, 'pct': pct})
-            
-    # 3. Ordenar árbol de ficheros alfabéticamente
-    tree_sorted = sorted(tree) if tree else []
-            
-    # 4. Contexto para el template
-    # Preparamos todas las variables que se inyectarán en el HTML
-    context = {
-        'user': user,
-        'proyecto': repo,
-        'url': repo.get('web_url', repo.get('html_url', 'N/A')),  # GitLab usa web_url, GitHub usa html_url
-        'act_date': repo.get('last_activity_at', repo.get('updated_at', 'N/A')),
-        'platform': platform,
-        'processed_languages': processed_languages,
-        'tree': tree_sorted,
-        'readme_html': readme_html,
-    }
 
-    # render_to_string() genera el HTML completo en memoria como un string de texto
-    html_string = render_to_string('portfolioCV/cv_template.html', context)
-    
-    # 5. Renderizar el PDF usando Headless Chromium (Playwright)
-    # Abre un navegador oculto, carga el HTML y le pide imprimir a PDF
-    # Header/Footer content para Playwright (debe ser HTML inyectado en el PDF)
-    repo_name = repo.get('name', repo.get('path', 'Repositorio'))
-    header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">Portfolio CV — {user.username} — {platform}</div>'
-    footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
     try:
-        pdf_bytes = html_a_pdf(html_string, header_html, footer_html)
-    except ServidorOcupado:
-        return _respuesta_servidor_ocupado()
+        pdf_bytes = pdf.cv_repo(user, repo, processed_languages, tree, readme, platform)
+    except pdf.ErrorPDF:
+        logger.exception("Error al generar el PDF del repositorio")
+        return HttpResponse("<h1>Error al generar PDF</h1><p>No se pudo generar el PDF. Inténtalo de nuevo.</p>", status=500)
 
-    # Escribir los bytes generados por el navegador en nuestro buffer de memoria
-    buffer.write(pdf_bytes)
-    buffer.seek(0)  # Rebobinar el buffer al principio para leerlo
-    
-    # 6. Devolver respuesta HTTP con el PDF
+    repo_name = repo.get('name', repo.get('path', 'Repositorio'))
     filename = f"CV_{repo_name}_{platform}.pdf".replace(" ", "_")
-    response = HttpResponse(buffer, content_type='application/pdf')  # Tipo MIME de PDF
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')  # Tipo MIME de PDF
     response['Content-Disposition'] = f'attachment; filename="{filename}"'  # Descargar como fichero adjunto
     return response
 
@@ -1106,7 +992,7 @@ def descargar_cv_completo(request):
             
     data['items'] = enriched_items
             
-    # 2. Descargar como HTML si lo pide el botón (útil cuando Playwright falla)
+    # 2. Descargar como HTML si lo pide el botón
     if request.GET.get('format') == 'html':
         from django.template.loader import render_to_string
         import markdown
@@ -1360,68 +1246,15 @@ def stream_resumen_gemini(request):
 
 def _generar_pdf_completo(user, cv_data):
     """
-    Generador del PDF final para el CV Unificado.
-    Carga todos los datos de la cesta, preprocesa los resúmenes IA (Markdown a HTML),
-    los pasa por un template y luego captura el PDF usando Playwright.
+    Generador del PDF final para el CV Unificado con Typst (sin navegador).
+    Los resúmenes IA y el "Sobre mí" van en Markdown y los convierte la propia plantilla.
     """
-    from django.template.loader import render_to_string
-    import markdown
     try:
-        import playwright.sync_api  # noqa: F401 (solo comprobamos que está instalado)
-    except ImportError:
-        error_html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Error PDF</title>
-            <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-                .container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 40px; max-width: 600px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-                h1 { color: #ff7b72; margin-top: 0; }
-                p { line-height: 1.6; font-size: 16px; margin-bottom: 20px; }
-                .btn { display: inline-block; background-color: #238636; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; border: 1px solid rgba(240, 246, 252, 0.1); }
-                .btn:hover { background-color: #2ea043; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>⚠️ Generación de PDF no disponible</h1>
-                <p>No se pudo generar el PDF en este servidor.</p>
-                <p>Por favor, utiliza la opción <strong>Descargar HTML</strong> para exportar tu CV profesional desde aquí.</p>
-                <a href="javascript:history.back()" class="btn">Volver Atrás</a>
-            </div>
-        </body>
-        </html>
-        """
-        return HttpResponse(error_html, status=501)
+        pdf_bytes = pdf.cv_profesional(user, cv_data)
+    except pdf.ErrorPDF:
+        logger.exception("Error al generar el PDF del CV profesional")
+        return HttpResponse("<h1>Error al generar PDF</h1><p>No se pudo generar el PDF. Inténtalo de nuevo.</p>", status=500)
 
-    buffer = io.BytesIO()
-    
-    if cv_data['personal_info'].get('about'):
-        cv_data['personal_info']['about_html'] = markdown.markdown(cv_data['personal_info']['about'], extensions=['fenced_code', 'tables'])
-    else:
-        cv_data['personal_info']['about_html'] = ""
-        
-    # Parse IA Summaries markdown for PDF view
-    for item in cv_data['items']:
-        if item.get('platform') == 'IA Summary':
-            item['content_html'] = markdown.markdown(item.get('content', ''), extensions=['fenced_code', 'tables'])
-    
-    context = {'user': user, 'cv': cv_data}
-    html_string = render_to_string('portfolioCV/cv_profesional_template.html', context)
-    
-    header_html = f'<div style="font-size:9px; color:#57606a; text-align:right; width:100%; padding-right:15mm;">CV Profesional — {user.username}</div>'
-    footer_html = '<div style="font-size:8px; color:#57606a; text-align:center; width:100%; border-top:1px solid #eaecef; padding-top:5px; margin:0 15mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
-    try:
-        pdf_bytes = html_a_pdf(html_string, header_html, footer_html)
-    except ServidorOcupado:
-        return _respuesta_servidor_ocupado()
-    except Exception as e:
-        return HttpResponse(f"<h1>Error al generar PDF</h1><p>{str(e)}</p>", status=500)
-
-    buffer.write(pdf_bytes)
-    buffer.seek(0)
-    response = HttpResponse(buffer, content_type='application/pdf')
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="CV_Profesional_Completo.pdf"'
     return response

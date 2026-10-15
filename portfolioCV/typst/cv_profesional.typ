@@ -1,40 +1,24 @@
-// CV profesional en Typst: la misma maquetación que cv_profesional_template.html.
+// PDF del CV profesional (la cesta): datos personales, foto, Sobre mí y proyectos.
 // Los datos del usuario llegan como JSON en sys.inputs.data y NUNCA se pegan en este
 // código, así que un nombre o una descripción no pueden inyectar marcado de Typst.
-#import "@preview/cmarker:0.1.6": render
+#import "comun.typ": *
 
 #let d = json(bytes(sys.inputs.data))
 #let info = d.personal_info
-
-#let primary = rgb("#0969da")
-#let text-main = rgb("#24292f")
-#let text-muted = rgb("#57606a")
-#let border-c = rgb("#d0d7de")
-#let bg-muted = rgb("#f6f8fa")
-
-// Markdown del usuario (Sobre mí, resúmenes IA): sin imágenes, que leerían ficheros locales
-#let md(texto) = render(texto, scope: (image: (..args) => []))
 
 #set document(title: "Curriculum Vitae Profesional")
 #set page(
   paper: "a4",
   margin: (top: 25mm, bottom: 25mm, left: 15mm, right: 15mm),
-  header: align(right, text(size: 6.75pt, fill: text-muted)[CV Profesional — #d.username]),
-  footer: context {
-    line(length: 100%, stroke: 0.75pt + rgb("#eaecef"))
-    v(-6pt)
-    align(center, text(size: 6pt, fill: text-muted)[#counter(page).display() / #counter(page).final().first()])
-  },
+  header: cabecera[CV Profesional — #d.username],
+  footer: pie,
 )
-#set text(font: ("Inter", "Helvetica", "Arial"), size: 11pt, fill: text-main, lang: "es")
+#set text(font: fuentes, size: 11pt, fill: text-main, lang: "es")
 #set par(leading: 0.65em, spacing: 1em)
 #set list(spacing: 0.75em, indent: 6pt)
 #set enum(spacing: 0.75em, indent: 6pt)
-#show raw: set text(font: ("Menlo", "DejaVu Sans Mono"), size: 9pt)
-#show raw.where(block: true): it => block(
-  width: 100%, fill: bg-muted, inset: 7.5pt, radius: 3pt, stroke: 0.75pt + border-c,
-  text(size: 8.5pt, it),
-)
+#show: estilos-markdown
+#show raw.where(block: false): it => box(fill: bg-muted, inset: (x: 3pt), outset: (y: 2.5pt), radius: 3pt, it)
 #show heading.where(level: 2): it => block(below: 11pt, above: 18pt, {
   text(size: 16pt, weight: "bold", it.body)
   v(-2pt)

@@ -4,7 +4,6 @@ xhtml2pdf
 social-auth-app-django
 markdown
 openai
-playwright
 httpx
 django-allauth
 cryptography
