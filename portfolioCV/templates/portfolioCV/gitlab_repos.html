@@ -1,5 +1,5 @@
 {% extends "portfolioCV/base.html" %}
-{% load static %}
+{% load static tecnologias_tags %}
 
 {% block title %}{{ platform }} — Repositorios{% endblock %}
 
@@ -44,7 +44,7 @@
         </p>
 
         {% if repo.language %}
-        <span class="repo-lang">● {{ repo.language }}</span>
+        {% logo_tec repo.language as logo %}<span class="repo-lang">{% if logo %}{{ logo }}{% else %}●{% endif %} {{ repo.language }}</span>
         {% endif %}
 
         <div class="repo-meta">

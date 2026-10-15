@@ -852,6 +852,9 @@ a:hover {
 }
 
 .repo-lang {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.82rem;
     color: var(--accent);
     font-weight: 600;
@@ -951,6 +954,16 @@ a:hover {
 }
 
 /* ─── Languages ─────────────────────────────────────────── */
+/* Logo oficial del lenguaje (Simple Icons) con su color de marca, ajustado para leerse en cada tema */
+.logo-tec {
+    width: 1.1em;
+    height: 1.1em;
+    flex-shrink: 0;
+    fill: var(--claro);
+}
+
+:root[data-theme="dark"] .logo-tec { fill: var(--oscuro); }
+
 .languages-container {
     display: flex;
     flex-direction: column;
@@ -971,6 +984,9 @@ a:hover {
 }
 
 .lang-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     font-weight: 600;
     font-size: 0.95rem;
     color: var(--text);

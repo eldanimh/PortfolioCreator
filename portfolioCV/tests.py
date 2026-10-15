@@ -916,3 +916,11 @@ class LogosTecnologiasTests(TestCase):
         self.assertIn('--c: #3776AB', html)                 # Python con su color y logo
         self.assertIn('<span class="tech">Makefile', html)   # sin logo: etiqueta normal
 
+
+    def test_logo_en_paginas_de_la_web(self):
+        from django.template import Context, Template
+        plantilla = Template('{% load tecnologias_tags %}{% logo_tec nombre %}')
+        svg = plantilla.render(Context({'nombre': 'Python'}))
+        self.assertIn('class="logo-tec"', svg)
+        self.assertIn('--claro: #', svg)
+        self.assertEqual(plantilla.render(Context({'nombre': 'Makefile'})), '')
