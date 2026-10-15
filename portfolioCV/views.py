@@ -762,11 +762,25 @@ def generar_cv_openalex(request, work_id):
 
     return _generar_pdf(request.user, repo, languages, tree, readme, 'OpenAlex')
 
+def _numero(valor, decimales=1):
+    """12.5 → '12,5' y 100.0 → '100' (formato español, sin ceros de sobra)"""
+    return f"{round(valor, decimales):g}".replace('.', ',')
+
+
+def _tamano_legible(n_bytes):
+    """650 → '650 B', 43348 → '42,3 KB', 1310720 → '1,25 MB'"""
+    if n_bytes < 1024:
+        return f"{int(n_bytes)} B"
+    if n_bytes < 1024 ** 2:
+        return f"{_numero(n_bytes / 1024)} KB"
+    return f"{_numero(n_bytes / 1024 ** 2, 2)} MB"
+
+
 def _language_bars(languages):
     """Lista ordenada de lenguajes con el ancho de barra relativo al mayor.
 
-    La API de GitHub devuelve bytes y las de GitLab/OpenAlex porcentajes
-    (suman ~100), por eso se distingue por el total.
+    La API de GitHub devuelve bytes (se muestra porcentaje y tamaño) y las de
+    GitLab/OpenAlex porcentajes (suman ~100, solo porcentaje): se distingue por el total.
     """
     if not languages:
         return []
@@ -775,9 +789,13 @@ def _language_bars(languages):
     en_bytes = total > 101
     bars = []
     for name, value in sorted(languages.items(), key=lambda kv: kv[1], reverse=True):
+        if en_bytes:
+            label = f"{_numero(value / total * 100)} % · {_tamano_legible(value)}"
+        else:
+            label = f"{_numero(value)} %"
         bars.append({
             'name': name,
-            'label': f"{value} bytes" if en_bytes else f"{round(value, 1):g}%",
+            'label': label,
             'width': round(value / maximo * 100, 1) if maximo > 0 else 0,
         })
     return bars

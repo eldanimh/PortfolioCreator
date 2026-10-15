@@ -802,3 +802,16 @@ class ImagenesReadmeParaleloTests(TestCase):
         with patch('portfolioCV.pdf._descargar_imagen') as mock_descarga:  # ya en caché
             pdf._imagenes_readme('![](https://8.8.8.8/a.png)', None)
         mock_descarga.assert_not_called()
+
+
+class LenguajesTests(TestCase):
+    def test_github_porcentaje_y_tamano(self):
+        from .views import _language_bars
+        barras = _language_bars({'CSS': 650, 'Astro': 43348, 'TypeScript': 5038, 'JavaScript': 1776})
+        self.assertEqual([b['name'] for b in barras], ['Astro', 'TypeScript', 'JavaScript', 'CSS'])
+        self.assertEqual([b['label'] for b in barras], ['85,3 % · 42,3 KB', '9,9 % · 4,9 KB', '3,5 % · 1,7 KB', '1,3 % · 650 B'])
+        self.assertEqual(_language_bars({'Python': 3 * 1024 ** 2})[0]['label'], '100 % · 3 MB')
+
+    def test_gitlab_solo_porcentaje(self):
+        from .views import _language_bars
+        self.assertEqual([b['label'] for b in _language_bars({'Python': 65.24, 'Shell': 34.76})], ['65,2 %', '34,8 %'])

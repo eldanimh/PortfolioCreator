@@ -967,6 +967,7 @@ a:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
 }
 
 .lang-name {
@@ -979,6 +980,8 @@ a:hover {
     font-size: 0.85rem;
     color: var(--text-light);
     font-weight: 500;
+    white-space: nowrap;               /* "85,3 % · 42,3 KB" siempre en una línea */
+    font-variant-numeric: tabular-nums; /* cifras del mismo ancho: se alinean entre filas */
 }
 
 .lang-bar-bg {
